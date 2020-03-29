@@ -1,5 +1,5 @@
-/* uLisp RISC-V 3.1 - www.ulisp.com
-   David Johnson-Davies - www.technoblogy.com - 20th March 2020
+/* uLisp RISC-V 3.1a - www.ulisp.com
+   David Johnson-Davies - www.technoblogy.com - 29th March 2020
 
    Licensed under the MIT license: https://opensource.org/licenses/MIT
 */
@@ -138,7 +138,21 @@ typedef void (*pfun_t)(char);
   #define CODESIZE 512                    /* Bytes */
   typedef int PinMode;
   #define SDCARD_SS_PIN 29
-    
+
+#elif defined(BOARD_SIPEED_MAIX_BIT)
+  #define WORKSPACESIZE 80000             /* Objects (16*bytes) */
+  #define SYMBOLTABLESIZE 1024            /* Bytes */
+  #define CODESIZE 512                    /* Bytes */
+  typedef int PinMode;
+  #define SDCARD_SS_PIN 29
+
+#elif defined(BOARD_SIPEED_MAIX_ONE_DOCK)
+  #define WORKSPACESIZE 80000             /* Objects (16*bytes) */
+  #define SYMBOLTABLESIZE 1024            /* Bytes */
+  #define CODESIZE 512                    /* Bytes */
+  typedef int PinMode;
+  #define SDCARD_SS_PIN 29
+
 #endif
 
 object Workspace[WORKSPACESIZE] WORDALIGNED;
@@ -1111,6 +1125,10 @@ void checkanalogread (int pin) {
 void checkanalogwrite (int pin) {
 #if defined(BOARD_SIPEED_MAIX_DUINO)
   if (!(pin>=0 && pin<=13)) error(ANALOGWRITE, invalidpin, number(pin));
+#elif defined(BOARD_SIPEED_MAIX_BIT)
+  if (!(pin>=0 && pin<=35)) error(ANALOGWRITE, invalidpin, number(pin));
+#elif defined(BOARD_SIPEED_MAIX_ONE_DOCK)
+  if (!(pin>=0 && pin<=47)) error(ANALOGWRITE, invalidpin, number(pin));
 #endif
 }
 
@@ -1674,7 +1692,7 @@ object *sp_withsdcard (object *args, object *env) {
 }
 
 object *sp_withgfx (object *args, object *env) {
-#if defined(BOARD_SIPEED_MAIX_DUINO)
+#if defined(BOARD_SIPEED_MAIX_DUINO) || defined(BOARD_SIPEED_MAIX_BIT) || defined(BOARD_SIPEED_MAIX_ONE_DOCK)
   object *params = first(args);
   object *var = first(params);
   object *pair = cons(var, stream(GFXSTREAM, 1));
@@ -1684,7 +1702,7 @@ object *sp_withgfx (object *args, object *env) {
   return result;
 #else
   (void) args, (void) env;
-  error(PSTR("with-gfx not supported"));
+  error2(WITHGFX, PSTR("not supported"));
   return nil;
 #endif
 }
@@ -4116,6 +4134,7 @@ object *eval (object *form, object *env) {
       if (nargs<n) error2(fname->name, PSTR("has too few arguments"));
       if (nargs>n) error2(fname->name, PSTR("has too many arguments"));
       uint32_t entry = startblock(car(function));
+      pop(GCStack);
       return call(entry, n, args, env);
     }
 
@@ -4510,7 +4529,7 @@ void setup () {
   initsleep();
   #if defined (gfxsupport)
   lcd.begin(15000000, COLOR_BLACK);
-  #endif  
+  #endif
   pfstring(PSTR("uLisp 3.1 "), pserial); pln(pserial);
 }
 
