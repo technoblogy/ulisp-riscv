@@ -1,5 +1,5 @@
-/* uLisp RISC-V 3.2 - www.ulisp.com
-   David Johnson-Davies - www.technoblogy.com - 29th April 2020
+/* uLisp RISC-V 3.3 - www.ulisp.com
+   David Johnson-Davies - www.technoblogy.com - 1st June 2020
 
    Licensed under the MIT license: https://opensource.org/licenses/MIT
 */
@@ -71,6 +71,8 @@ Sipeed_ST7789 tft(320, 240, spi_);
 #define clrflag(x)         (Flags = Flags & ~(1<<(x)))
 #define tstflag(x)         (Flags & 1<<(x))
 
+#define issp(x)            (x == ' ' || x == '\n' || x == '\r' || x == '\t')
+
 // Code marker stores start and end of code block
 #define startblock(x)      ((x->integer) & 0xFFFF)
 #define endblock(x)        ((x->integer) >> 16 & 0xFFFF)
@@ -82,22 +84,31 @@ enum type { ZZERO=0, SYMBOL=2, CODE=4, NUMBER=6, STREAM=8, CHARACTER=10, FLOAT=1
 enum token { UNUSED, BRA, KET, QUO, DOT };
 enum stream { SERIALSTREAM, I2CSTREAM, SPISTREAM, SDSTREAM, STRINGSTREAM, GFXSTREAM };
 
-enum function { NIL, TEE, NOTHING, OPTIONAL, INITIALELEMENT, AMPREST, LAMBDA, LET, LETSTAR, CLOSURE,
-SPECIAL_FORMS, QUOTE, DEFUN, DEFVAR, SETQ, LOOP, RETURN, PUSH, POP, INCF, DECF, SETF, DOLIST, DOTIMES,
-TRACE, UNTRACE, FORMILLIS, WITHOUTPUTTOSTRING, WITHSERIAL, WITHI2C, WITHSPI, WITHSDCARD, WITHGFX, DEFCODE,
-TAIL_FORMS, PROGN, IF, COND, WHEN, UNLESS, CASE, AND, OR, FUNCTIONS, NOT, NULLFN, CONS, ATOM, LISTP,
-CONSP, SYMBOLP, ARRAYP, BOUNDP, SETFN, STREAMP, EQ, CAR, FIRST, CDR, REST, CAAR, CADR, SECOND, CDAR, CDDR,
-CAAAR, CAADR, CADAR, CADDR, THIRD, CDAAR, CDADR, CDDAR, CDDDR, LENGTH, ARRAYDIMENSIONS, LIST, MAKEARRAY,
-REVERSE, NTH, AREF, ASSOC, MEMBER, APPLY, FUNCALL, APPEND, MAPC, MAPCAR, MAPCAN, ADD, SUBTRACT, MULTIPLY,
-DIVIDE, MOD, ONEPLUS, ONEMINUS, ABS, RANDOM, MAXFN, MINFN, NOTEQ, NUMEQ, LESS, LESSEQ, GREATER, GREATEREQ,
-PLUSP, MINUSP, ZEROP, ODDP, EVENP, INTEGERP, NUMBERP, FLOATFN, FLOATP, SIN, COS, TAN, ASIN, ACOS, ATAN,
-SINH, COSH, TANH, EXP, SQRT, LOG, EXPT, CEILING, FLOOR, TRUNCATE, ROUND, CHAR, CHARCODE, CODECHAR,
-CHARACTERP, STRINGP, STRINGEQ, STRINGLESS, STRINGGREATER, SORT, STRINGFN, CONCATENATE, SUBSEQ,
-READFROMSTRING, PRINCTOSTRING, PRIN1TOSTRING, LOGAND, LOGIOR, LOGXOR, LOGNOT, ASH, LOGBITP, EVAL, GLOBALS,
-LOCALS, MAKUNBOUND, BREAK, READ, PRIN1, PRINT, PRINC, TERPRI, READBYTE, READLINE, WRITEBYTE, WRITESTRING,
-WRITELINE, RESTARTI2C, GC, ROOM, SAVEIMAGE, LOADIMAGE, CLS, PINMODE, DIGITALREAD, DIGITALWRITE,
-ANALOGREAD, ANALOGWRITE, DELAY, MILLIS, SLEEP, NOTE, EDIT, PPRINT, PPRINTALL, FORMAT, REQUIRE,
-LISTLIBRARY, DRAWPIXEL, DRAWLINE, DRAWRECT, FILLRECT, DRAWCIRCLE, FILLCIRCLE, DRAWROUNDRECT,
+// Stream names used by printobject
+const char serialstream[] PROGMEM = "serial";
+const char i2cstream[] PROGMEM = "i2c";
+const char spistream[] PROGMEM = "spi";
+const char sdstream[] PROGMEM = "sd";
+const char stringstream[] PROGMEM = "string";
+const char gfxstream[] PROGMEM = "gfx";
+const char *const streamname[] PROGMEM = {serialstream, i2cstream, spistream, sdstream, stringstream, gfxstream};
+
+enum function { NIL, TEE, NOTHING, OPTIONAL, INITIALELEMENT, ELEMENTTYPE, BIT, AMPREST, LAMBDA, LET,
+LETSTAR, CLOSURE, SPECIAL_FORMS, QUOTE, DEFUN, DEFVAR, SETQ, LOOP, RETURN, PUSH, POP, INCF, DECF, SETF,
+DOLIST, DOTIMES, TRACE, UNTRACE, FORMILLIS, WITHOUTPUTTOSTRING, WITHSERIAL, WITHI2C, WITHSPI, WITHSDCARD,
+WITHGFX, DEFCODE, TAIL_FORMS, PROGN, IF, COND, WHEN, UNLESS, CASE, AND, OR, FUNCTIONS, NOT, NULLFN, CONS,
+ATOM, LISTP, CONSP, SYMBOLP, ARRAYP, BOUNDP, SETFN, STREAMP, EQ, CAR, FIRST, CDR, REST, CAAR, CADR,
+SECOND, CDAR, CDDR, CAAAR, CAADR, CADAR, CADDR, THIRD, CDAAR, CDADR, CDDAR, CDDDR, LENGTH,
+ARRAYDIMENSIONS, LIST, MAKEARRAY, REVERSE, NTH, AREF, ASSOC, MEMBER, APPLY, FUNCALL, APPEND, MAPC, MAPCAR,
+MAPCAN, ADD, SUBTRACT, MULTIPLY, DIVIDE, MOD, ONEPLUS, ONEMINUS, ABS, RANDOM, MAXFN, MINFN, NOTEQ, NUMEQ,
+LESS, LESSEQ, GREATER, GREATEREQ, PLUSP, MINUSP, ZEROP, ODDP, EVENP, INTEGERP, NUMBERP, FLOATFN, FLOATP,
+SIN, COS, TAN, ASIN, ACOS, ATAN, SINH, COSH, TANH, EXP, SQRT, LOG, EXPT, CEILING, FLOOR, TRUNCATE, ROUND,
+CHAR, CHARCODE, CODECHAR, CHARACTERP, STRINGP, STRINGEQ, STRINGLESS, STRINGGREATER, SORT, STRINGFN,
+CONCATENATE, SUBSEQ, READFROMSTRING, PRINCTOSTRING, PRIN1TOSTRING, LOGAND, LOGIOR, LOGXOR, LOGNOT, ASH,
+LOGBITP, EVAL, GLOBALS, LOCALS, MAKUNBOUND, BREAK, READ, PRIN1, PRINT, PRINC, TERPRI, READBYTE, READLINE,
+WRITEBYTE, WRITESTRING, WRITELINE, RESTARTI2C, GC, ROOM, SAVEIMAGE, LOADIMAGE, CLS, PINMODE, DIGITALREAD,
+DIGITALWRITE, ANALOGREAD, ANALOGWRITE, DELAY, MILLIS, SLEEP, NOTE, EDIT, PPRINT, PPRINTALL, FORMAT,
+REQUIRE, LISTLIBRARY, DRAWPIXEL, DRAWLINE, DRAWRECT, FILLRECT, DRAWCIRCLE, FILLCIRCLE, DRAWROUNDRECT,
 FILLROUNDRECT, DRAWTRIANGLE, FILLTRIANGLE, DRAWCHAR, SETCURSOR, SETTEXTCOLOR, SETTEXTSIZE, SETTEXTWRAP,
 FILLSCREEN, SETROTATION, INVERTDISPLAY, ENDFUNCTIONS };
 
@@ -207,7 +218,7 @@ int builtin (char* n);
 void errorsub (symbol_t fname, PGM_P string) {
   pfl(pserial); pfstring(PSTR("Error: "), pserial);
   if (fname) {
-    pserial('\''); 
+    pserial('\'');
     pstring(symbolname(fname), pserial);
     pfstring(PSTR("' "), pserial);
   }
@@ -266,7 +277,7 @@ object *myalloc () {
   return temp;
 }
 
-inline void myfree (object *obj) {
+void myfree (object *obj) {
   car(obj) = NULL;
   cdr(obj) = Freelist;
   Freelist = obj;
@@ -342,7 +353,7 @@ void markobject (object *obj) {
   object* arg = car(obj);
   unsigned int type = obj->type;
   mark(obj);
-  
+
   if (type >= PAIR || type == ZZERO) { // cons
     markobject(arg);
     obj = cdr(obj);
@@ -353,7 +364,7 @@ void markobject (object *obj) {
     obj = cdr(obj);
     goto MARK;
   }
-  
+
   if (type == STRING) {
     obj = cdr(obj);
     while (obj != NULL) {
@@ -395,7 +406,7 @@ void movepointer (object *from, object *to) {
     object *obj = &Workspace[i];
     unsigned int type = (obj->type) & ~MARKBIT;
     if (marked(obj) && (type >= ARRAY || type==ZZERO)) {
-      if (car(obj) == (object *)((uintptr_t)from | MARKBIT)) 
+      if (car(obj) == (object *)((uintptr_t)from | MARKBIT))
         car(obj) = (object *)((uintptr_t)to | MARKBIT);
       if (cdr(obj) == from) cdr(obj) = to;
     }
@@ -468,8 +479,8 @@ void SDWriteInt (File file, uintptr_t data) {
 #endif
 
 int saveimage (object *arg) {
-  uintptr_t imagesize = compactimage(&arg);
 #if defined(sdcardsupport)
+  uintptr_t imagesize = compactimage(&arg);
   if (!SD.begin(SDCARD_SS_PIN)) error2(SAVEIMAGE, PSTR("problem initialising SD card"));
   File file;
   if (stringp(arg)) {
@@ -672,15 +683,22 @@ int checkinteger (symbol_t name, object *obj) {
   return obj->integer;
 }
 
+int checkbitvalue (symbol_t name, object *obj) {
+  if (!integerp(obj)) error(name, notanumber, obj);
+  int n = obj->integer;
+  if (n & ~1) error(name, PSTR("argument is not a bit value"), obj);
+  return n;
+}
+
 float checkintfloat (symbol_t name, object *obj){
   if (integerp(obj)) return obj->integer;
-  if (floatp(obj)) return obj->single_float;
-  error(name, notanumber, obj);
+  if (!floatp(obj)) error(name, notanumber, obj);
+  return obj->single_float;
 }
 
 int checkchar (symbol_t name, object *obj) {
   if (!characterp(obj)) error(name, PSTR("argument is not a character"), obj);
-  return obj->integer;
+  return obj->chars;
 }
 
 int isstream (object *obj){
@@ -766,7 +784,7 @@ object *buildarray (int n, int s, object *def) {
   else return cons(buildarray(n, s2, def), nil);
 }
 
-object *makearray (symbol_t name, object *dims, object *def) {
+object *makearray (symbol_t name, object *dims, object *def, bool bitp) {
   int size = 1;
   object *dimensions = dims;
   while (dims != NULL) {
@@ -775,6 +793,8 @@ object *makearray (symbol_t name, object *dims, object *def) {
     size = size * d;
     dims = cdr(dims);
   }
+  // Bit array identified by making first dimension negative
+  if (bitp) { size = (size + 31)/32; car(dimensions) = number(-(car(dimensions)->integer)); }
   object *ptr = myalloc();
   ptr->type = ARRAY;
   object *tree = nil;
@@ -792,12 +812,15 @@ object **arrayref (object *array, int index, int size) {
   }
   return p;
 }
-  
-object **getarray (symbol_t name, object *array, object *subs, object *env) {
+
+object **getarray (symbol_t name, object *array, object *subs, object *env, int *bit) {
   int index = 0, size = 1, s;
+  *bit = -1;
+  bool bitp = false;
   object *dims = cddr(array);
   while (dims != NULL && subs != NULL) {
     int d = car(dims)->integer;
+    if (d < 0) { d = -d; bitp = true; }
     if (env) s = checkinteger(name, eval(car(subs), env)); else s = checkinteger(name, car(subs));
     if (s < 0 || s >= d) error(name, PSTR("subscript out of range"), car(subs));
     size = size * d;
@@ -806,6 +829,10 @@ object **getarray (symbol_t name, object *array, object *subs, object *env) {
   }
   if (dims != NULL) error2(name, PSTR("too few subscripts"));
   if (subs != NULL) error2(name, PSTR("too many subscripts"));
+  if (bitp) {
+    size = (size + 31)/32;
+    *bit = index & 0x1F; index = index>>5;
+  }
   return arrayref(array, index, size);
 }
 
@@ -831,33 +858,73 @@ object *readarray (int d, object *args) {
     if (dims == NULL) { dims = cons(number(l), NULL); head = dims; }
     else { cdr(dims) = cons(number(l), NULL); dims = cdr(dims); }
     size = size * l;
-    if (list != NULL) list = car(list); 
+    if (list != NULL) list = car(list);
   }
-  object *array = makearray(0, head, NULL);
+  object *array = makearray(0, head, NULL, false);
   rslice(array, size, 0, head, args);
   return array;
 }
 
-void pslice (object *array, int size, int slice, object *dims, pfun_t pfun) {
-  pfun('(');
+object *readbitarray (gfun_t gfun) {
+  char ch = gfun();
+  object *head = NULL;
+  object *tail = NULL;
+  while (!issp(ch) && ch != ')' && ch != '(') {
+    if (ch != '0' && ch != '1') error2(0, PSTR("illegal character in bit array"));
+    object *cell = cons(number(ch - '0'), NULL);
+    if (head == NULL) head = cell;
+    else tail->cdr = cell;
+    tail = cell;
+    ch = gfun();
+  }
+  LastChar = ch;
+  int size = listlength(0, head);
+  object *array = makearray(0, cons(number(size), NULL), 0, true);
+  size = (size + 31) / 32;
+  int index = 0;
+  while (head != NULL) {
+    object **loc = arrayref(array, index>>5, size);
+    int bit = index & 0x1F;
+    *loc = number((((*loc)->integer) & ~(1<<bit)) | (car(head)->integer)<<bit);
+    index++;
+    head = cdr(head);
+  }
+  return array;
+}
+
+void pslice (object *array, int size, int slice, object *dims, pfun_t pfun, bool bitp) {
+  bool spaces = true;
+  if (slice == -1) { spaces = false; slice = 0; }
   int d = first(dims)->integer;
+  if (d < 0) d = -d;
   for (int i = 0; i < d; i++) {
-    if (i) pfun(' ');
+    if (i && spaces) pfun(' ');
     int index = slice * d + i;
     if (cdr(dims) == NULL) {
-      printobject(*arrayref(array, index, size), pfun);
-    } else pslice(array, size, index, cdr(dims), pfun);
+      if (bitp) pint(((*arrayref(array, index>>5, size))->integer)>>(index & 0x1f) & 1, pfun);
+      else printobject(*arrayref(array, index, size), pfun);
+    } else { pfun('('); pslice(array, size, index, cdr(dims), pfun, bitp); pfun(')'); }
   }
-  pfun(')');
 }
 
 void printarray (object *array, pfun_t pfun) {
   object *dimensions = cddr(array);
   object *dims = dimensions;
+  bool bitp = false;
   int size = 1, n = 0;
-  while (dims != NULL) { size = size * car(dims)->integer; dims = cdr(dims); n++; }
-  pfun('#'); if (n > 1) { pint(n, pfun); pfun('A'); }
-  pslice(array, size, 0, dimensions, pfun);
+  while (dims != NULL) {
+    int d = car(dims)->integer;
+    if (d < 0) { bitp = true; d = -d; }
+    size = size * d;
+    dims = cdr(dims); n++;
+  }
+  if (bitp) size = (size+31)/32;
+  pfun('#');
+  if (n == 1 && bitp) { pfun('*'); pslice(array, size, -1, dimensions, pfun, bitp); }
+  else {
+    if (n > 1) { pint(n, pfun); pfun('A'); }
+    pfun('('); pslice(array, size, 0, dimensions, pfun, bitp); pfun(')');
+  }
 }
 
 // String utilities
@@ -936,7 +1003,7 @@ char nthchar (object *string, int n) {
 }
 
 int gstr () {
-  if (LastChar) { 
+  if (LastChar) {
     char temp = LastChar;
     LastChar = 0;
     return temp;
@@ -977,7 +1044,7 @@ object *findvalue (object *var, object *env) {
 }
 
 // Handling closures
-  
+
 object *closure (int tc, symbol_t name, object *state, object *function, object *args, object **env) {
   int trace = 0;
   if (name) trace = tracing(name);
@@ -1006,16 +1073,16 @@ object *closure (int tc, symbol_t name, object *state, object *function, object 
   while (params != NULL) {
     object *value;
     object *var = first(params);
-    if (symbolp(var) && var->name == OPTIONAL) optional = true;  
+    if (symbolp(var) && var->name == OPTIONAL) optional = true;
     else {
       if (consp(var)) {
         if (!optional) error(name, PSTR("invalid default value"), var);
         if (args == NULL) value = eval(second(var), *env);
         else { value = first(args); args = cdr(args); }
         var = first(var);
-        if (!symbolp(var)) error(name, PSTR("illegal optional parameter"), var); 
+        if (!symbolp(var)) error(name, PSTR("illegal optional parameter"), var);
       } else if (!symbolp(var)) {
-        error2(name, PSTR("illegal parameter"));     
+        error2(name, PSTR("illegal parameter"));
       } else if (var->name == AMPREST) {
         params = cdr(params);
         var = first(params);
@@ -1023,22 +1090,16 @@ object *closure (int tc, symbol_t name, object *state, object *function, object 
         args = NULL;
       } else {
         if (args == NULL) {
-          if (optional) value = nil; 
-          else {
-            if (name) error2(name, toofewargs);
-            else error2(0, PSTR("function has too few arguments"));
-          }
+          if (optional) value = nil;
+          else error2(name, toofewargs);
         } else { value = first(args); args = cdr(args); }
       }
       push(cons(var,value), *env);
       if (trace) { pserial(' '); printobject(value, pserial); }
     }
-    params = cdr(params);  
+    params = cdr(params);
   }
-  if (args != NULL) {
-    if (name) error2(name, toomanyargs);
-    else error2(0, PSTR("function has too many arguments"));
-  }
+  if (args != NULL) error2(name, toomanyargs);
   if (trace) { pserial(')'); pln(pserial); }
   // Do an implicit progn
   if (tc) push(nil, *env);
@@ -1067,34 +1128,38 @@ object *apply (symbol_t name, object *function, object *args, object *env) {
 
 // In-place operations
 
-object **place (symbol_t name, object *args, object *env) {
+object **place (symbol_t name, object *args, object *env, int *bit) {
+  *bit = -1;
   if (atom(args)) return &cdr(findvalue(args, env));
   object* function = first(args);
-  if (issymbol(function, CAR) || issymbol(function, FIRST)) {
-    object *value = eval(second(args), env);
-    if (!listp(value)) error(name, PSTR("can't take car"), value);
-    return &car(value);
-  }
-  if (issymbol(function, CDR) || issymbol(function, REST)) {
-    object *value = eval(second(args), env);
-    if (!listp(value)) error(name, PSTR("can't take cdr"), value);
-    return &cdr(value);
-  }
-  if (issymbol(function, NTH)) {
-    int index = checkinteger(NTH, eval(second(args), env));
-    object *list = eval(third(args), env);
-    if (atom(list)) error(name, PSTR("second argument to nth is not a list"), list);
-    while (index > 0) {
-      list = cdr(list);
-      if (list == NULL) error2(name, PSTR("index to nth is out of range"));
-      index--;
+  if (symbolp(function)) {
+    symbol_t fname = function->name;
+    if (fname == CAR || fname == FIRST) {
+      object *value = eval(second(args), env);
+      if (!listp(value)) error(name, PSTR("can't take car"), value);
+      return &car(value);
     }
-    return &car(list);
-  }
-  if (issymbol(function, AREF)) {
-    object *array = eval(second(args), env);
-    if (!arrayp(array)) error(AREF, PSTR("first argument is not an array"), array);
-    return getarray(AREF, array, cddr(args), env);
+    if (fname == CDR || fname == REST) {
+      object *value = eval(second(args), env);
+      if (!listp(value)) error(name, PSTR("can't take cdr"), value);
+      return &cdr(value);
+    }
+    if (fname == NTH) {
+      int index = checkinteger(NTH, eval(second(args), env));
+      object *list = eval(third(args), env);
+      if (atom(list)) error(name, PSTR("second argument to nth is not a list"), list);
+      while (index > 0) {
+        list = cdr(list);
+        if (list == NULL) error2(name, PSTR("index to nth is out of range"));
+        index--;
+      }
+      return &car(list);
+    }
+    if (fname == AREF) {
+      object *array = eval(second(args), env);
+      if (!arrayp(array)) error(AREF, PSTR("first argument is not an array"), array);
+      return getarray(AREF, array, cddr(args), env, bit);
+    }
   }
   error2(name, PSTR("illegal place"));
   return nil;
@@ -1102,13 +1167,13 @@ object **place (symbol_t name, object *args, object *env) {
 
 // Checked car and cdr
 
-inline object *carx (object *arg) {
+object *carx (object *arg) {
   if (!listp(arg)) error(0, PSTR("can't take car"), arg);
   if (arg == nil) return nil;
   return car(arg);
 }
 
-inline object *cdrx (object *arg) {
+object *cdrx (object *arg) {
   if (!listp(arg)) error(0, PSTR("can't take cdr"), arg);
   if (arg == nil) return nil;
   return cdr(arg);
@@ -1121,12 +1186,12 @@ void I2Cinit (bool enablePullup) {
   Wire.begin();
 }
 
-inline int I2Cread () {
+int I2Cread () {
   return Wire.read();
 }
 
-inline bool I2Cwrite (uint8_t data) {
-  return Wire.write(data);
+void I2Cwrite (uint8_t data) {
+  Wire.write(data);
 }
 
 bool I2Cstart (uint8_t address, uint8_t read) {
@@ -1247,7 +1312,10 @@ pfun_t pstreamfun (object *args) {
     else if (address == 2) pfun = serial2write;
     else if (address == 3) pfun = serial3write;
     #endif
-  }   
+  }
+  else if (streamtype == STRINGSTREAM) {
+    pfun = pstr;
+  }  
   #if defined(sdcardsupport)
   else if (streamtype == SDSTREAM) pfun = (pfun_t)SDwrite;
   #endif
@@ -1313,7 +1381,7 @@ void pcount (char c) {
   if (c == '\n') PrintCount++;
   PrintCount++;
 }
-  
+
 uint8_t atomwidth (object *obj) {
   PrintCount = 0;
   printobject(obj, pcount);
@@ -1321,7 +1389,7 @@ uint8_t atomwidth (object *obj) {
 }
 
 uint8_t hexwidth (object *obj) {
-  PrintCount = 0;      
+  PrintCount = 0;
   pinthex(obj->integer, pcount);
   return PrintCount;
 }
@@ -1460,7 +1528,7 @@ int assemble (int pass, int origin, object *entries, object *env, object *pcpair
 
 object *sp_quote (object *args, object *env) {
   (void) env;
-  checkargs(QUOTE, args); 
+  checkargs(QUOTE, args);
   return first(args);
 }
 
@@ -1523,16 +1591,18 @@ object *sp_return (object *args, object *env) {
 }
 
 object *sp_push (object *args, object *env) {
+  int bit;
   checkargs(PUSH, args); 
   object *item = eval(first(args), env);
-  object **loc = place(PUSH, second(args), env);
+  object **loc = place(PUSH, second(args), env, &bit);
   push(item, *loc);
   return *loc;
 }
 
 object *sp_pop (object *args, object *env) {
+  int bit;
   checkargs(POP, args); 
-  object **loc = place(POP, first(args), env);
+  object **loc = place(POP, first(args), env, &bit);
   object *result = car(*loc);
   pop(*loc);
   return result;
@@ -1541,27 +1611,36 @@ object *sp_pop (object *args, object *env) {
 // Accessors
 
 object *sp_incf (object *args, object *env) {
+  int bit;
   checkargs(INCF, args); 
-  object **loc = place(INCF, first(args), env);
+  object **loc = place(INCF, first(args), env, &bit);
   args = cdr(args);
   
   object *x = *loc;
   object *inc = (args != NULL) ? eval(first(args), env) : NULL;
 
+  if (bit != -1) {
+    int increment;
+    if (inc == NULL) increment = 1; else increment = checkbitvalue(INCF, inc);
+    int newvalue = (((*loc)->integer)>>bit & 1) + increment;
+
+    if (newvalue & ~1) error2(INCF, PSTR("result is not a bit value"));
+    *loc = number((((*loc)->integer) & ~(1<<bit)) | newvalue<<bit);
+    return number(newvalue);
+  }
+
   if (floatp(x) || floatp(inc)) {
     float increment;
     float value = checkintfloat(INCF, x);
 
-    if (inc == NULL) increment = 1.0;
-    else increment = checkintfloat(INCF, inc);
+    if (inc == NULL) increment = 1.0; else increment = checkintfloat(INCF, inc);
 
     *loc = makefloat(value + increment);
   } else if (integerp(x) && (integerp(inc) || inc == NULL)) {
     int increment;
     int value = x->integer;
 
-    if (inc == NULL) increment = 1;
-    else increment = inc->integer;
+    if (inc == NULL) increment = 1; else increment = inc->integer;
 
     if (increment < 1) {
       if (INT_MIN - increment > value) *loc = makefloat((float)value + (float)increment);
@@ -1575,27 +1654,36 @@ object *sp_incf (object *args, object *env) {
 }
 
 object *sp_decf (object *args, object *env) {
-  checkargs(DECF, args); 
-  object **loc = place(DECF, first(args), env);
+  int bit;
+  checkargs(DECF, args);
+  object **loc = place(DECF, first(args), env, &bit);
   args = cdr(args);
   
   object *x = *loc;
   object *dec = (args != NULL) ? eval(first(args), env) : NULL;
 
+  if (bit != -1) {
+    int decrement;
+    if (dec == NULL) decrement = 1; else decrement = checkbitvalue(DECF, dec);
+    int newvalue = (((*loc)->integer)>>bit & 1) - decrement;
+
+    if (newvalue & ~1) error2(INCF, PSTR("result is not a bit value"));
+    *loc = number((((*loc)->integer) & ~(1<<bit)) | newvalue<<bit);
+    return number(newvalue);
+  }
+  
   if (floatp(x) || floatp(dec)) {
     float decrement;
     float value = checkintfloat(DECF, x);
 
-    if (dec == NULL) decrement = 1.0;
-    else decrement = checkintfloat(DECF, dec);
+    if (dec == NULL) decrement = 1.0; else decrement = checkintfloat(DECF, dec);
 
     *loc = makefloat(value - decrement);
   } if (integerp(x) && (integerp(dec) || dec == NULL)) {
     int decrement;
     int value = x->integer;
 
-    if (dec == NULL) decrement = 1;
-    else decrement = dec->integer;
+    if (dec == NULL) decrement = 1; else decrement = dec->integer;
 
     if (decrement < 1) {
       if (INT_MAX + decrement < value) *loc = makefloat((float)value - (float)decrement);
@@ -1609,12 +1697,14 @@ object *sp_decf (object *args, object *env) {
 }
 
 object *sp_setf (object *args, object *env) {
+  int bit;
   object *arg = nil;
   while (args != NULL) {
     if (cdr(args) == NULL) error2(SETF, oddargs);
-    object **loc = place(SETF, first(args), env);
+    object **loc = place(SETF, first(args), env, &bit);
     arg = eval(second(args), env);
-    *loc = arg;
+    if (bit == -1) *loc = arg;
+    else *loc = number((checkinteger(SETF,*loc) & ~(1<<bit)) | checkbitvalue(SETF,arg)<<bit);
     args = cddr(args);
   }
   return arg;
@@ -2199,14 +2289,16 @@ object *fn_length (object *args, object *env) {
   object *arg = first(args);
   if (listp(arg)) return number(listlength(LENGTH, arg));
   if (stringp(arg)) return number(stringlength(arg));
-  if (arrayp(arg) && cdr(cddr(arg)) == NULL) return first(cddr(arg));
+  if (arrayp(arg) && cdr(cddr(arg)) == NULL) return number(-(first(cddr(arg))->integer));
   error(LENGTH, PSTR("argument is not a list, 1d array, or string"), arg);
+  return nil;
 }
 
 object *fn_arraydimensions (object *args, object *env) {
   object *array = first(args);
   if (!arrayp(array)) error(ARRAYDIMENSIONS, PSTR("argument is not an array"), array);
-  return cddr(array);
+  object *dimensions = cddr(array);
+  return (first(dimensions)->integer < 0) ? cons(number(-(first(dimensions)->integer)), cdr(dimensions)) : dimensions;
 }
 
 object *fn_list (object *args, object *env) {
@@ -2217,16 +2309,20 @@ object *fn_list (object *args, object *env) {
 object *fn_makearray (object *args, object *env) {
   (void) env;
   object *def = nil;
+  bool bitp = false;
   object *dims = first(args);
   if (dims == NULL) error2(MAKEARRAY, PSTR("dimensions can't be nil"));
   else if (atom(dims)) dims = cons(dims, NULL);
-  if (cdr(args) != NULL) {
-    object *var = second(args);
-    if (!symbolp(var) || var->name != INITIALELEMENT)
-      error(MAKEARRAY, PSTR("illegal second argument"), var); 
-    if (cddr(args) != NULL) def = third(args);
+  args = cdr(args);
+  while (args != NULL && cdr(args) != NULL) {
+    object *var = first(args);
+    if (issymbol(first(args), INITIALELEMENT)) def = second(args);
+    else if (issymbol(first(args), ELEMENTTYPE) && issymbol(second(args), BIT)) bitp = true;
+    else error(MAKEARRAY, PSTR("argument not recognised"), var); 
+    args = cddr(args);
   }
-  return makearray(MAKEARRAY, dims, def);
+  if (bitp) { if (def == nil) def = 0; else def = number(-checkbitvalue(MAKEARRAY, def)); } // 1 becomes all ones
+  return makearray(MAKEARRAY, dims, def, bitp);
 }
 
 object *fn_reverse (object *args, object *env) {
@@ -2255,9 +2351,12 @@ object *fn_nth (object *args, object *env) {
 }
 
 object *fn_aref (object *args, object *env) {
+  int bit;
   object *array = first(args);
   if (!arrayp(array)) error(AREF, PSTR("first argument is not an array"), array);
-  return *getarray(AREF, array, cdr(args), 0);
+  object *loc = *getarray(AREF, array, cdr(args), 0, &bit);
+  if (bit == -1) return loc;
+  else return number((loc->integer)>>bit & 1);
 }
 
 object *fn_assoc (object *args, object *env) {
@@ -2287,7 +2386,7 @@ object *fn_apply (object *args, object *env) {
     last = cdr(last);
   }
   object *arg = car(last);
-  if (!listp(arg)) error(APPLY, PSTR("last argument is not a list"), arg);
+  if (!listp(arg)) error(APPLY, notalist, arg);
   cdr(previous) = arg;
   return apply(APPLY, first(args), cdr(args), env);
 }
@@ -2300,7 +2399,7 @@ object *fn_append (object *args, object *env) {
   (void) env;
   object *head = NULL;
   object *tail;
-  while (args != NULL) {   
+  while (args != NULL) {
     object *list = first(args);
     if (!listp(list)) error(APPEND, notalist, list);
     while (consp(list)) {
@@ -2347,7 +2446,7 @@ object *fn_mapcar (object *args, object *env) {
   args = cdr(args);
   object *params = cons(NULL, NULL);
   push(params,GCStack);
-  object *head = cons(NULL, NULL); 
+  object *head = cons(NULL, NULL);
   push(head,GCStack);
   object *tail = head;
   // Make parameters
@@ -2378,7 +2477,7 @@ object *fn_mapcan (object *args, object *env) {
   args = cdr(args);
   object *params = cons(NULL, NULL);
   push(params,GCStack);
-  object *head = cons(NULL, NULL); 
+  object *head = cons(NULL, NULL);
   push(head,GCStack);
   object *tail = head;
   // Make parameters
@@ -2451,6 +2550,7 @@ object *negate (object *arg) {
     else return number(-result);
   } else if (floatp(arg)) return makefloat(-(arg->single_float));
   else error(SUBTRACT, notanumber, arg);
+  return nil;
 }
 
 object *fn_subtract (object *args, object *env) {
@@ -2474,6 +2574,7 @@ object *fn_subtract (object *args, object *env) {
     }
     return number(result);
   } else error(SUBTRACT, notanumber, arg);
+  return nil;
 }
 
 object *multiply_floats (object *args, float fresult) {
@@ -2528,7 +2629,7 @@ object *fn_divide (object *args, object *env) {
       else if (i == 1) return number(1);
       else return makefloat(1.0 / i);
     } else error(DIVIDE, notanumber, arg);
-  }    
+  }
   // Multiple arguments
   if (floatp(arg)) return divide_floats(args, arg->single_float);
   else if (integerp(arg)) {
@@ -2537,7 +2638,7 @@ object *fn_divide (object *args, object *env) {
       arg = car(args);
       if (floatp(arg)) {
         return divide_floats(args, result);
-      } else if (integerp(arg)) {       
+      } else if (integerp(arg)) {
         int i = arg->integer;
         if (i == 0) error2(DIVIDE, PSTR("division by zero"));
         if ((result % i) != 0) return divide_floats(args, result);
@@ -2546,8 +2647,9 @@ object *fn_divide (object *args, object *env) {
         args = cdr(args);
       } else error(DIVIDE, notanumber, arg);
     }
-    return number(result); 
+    return number(result);
   } else error(DIVIDE, notanumber, arg);
+  return nil;
 }
 
 object *fn_mod (object *args, object *env) {
@@ -2580,6 +2682,7 @@ object *fn_oneplus (object *args, object *env) {
     if (result == INT_MAX) return makefloat((arg->integer) + 1.0);
     else return number(result + 1);
   } else error(ONEPLUS, notanumber, arg);
+  return nil;
 }
 
 object *fn_oneminus (object *args, object *env) {
@@ -2591,6 +2694,7 @@ object *fn_oneminus (object *args, object *env) {
     if (result == INT_MIN) return makefloat((arg->integer) - 1.0);
     else return number(result - 1);
   } else error(ONEMINUS, notanumber, arg);
+  return nil;
 }
 
 object *fn_abs (object *args, object *env) {
@@ -2602,6 +2706,7 @@ object *fn_abs (object *args, object *env) {
     if (result == INT_MIN) return makefloat(abs((float)result));
     else return number(abs(result));
   } else error(ABS, notanumber, arg);
+  return nil;
 }
 
 object *fn_random (object *args, object *env) {
@@ -2610,6 +2715,7 @@ object *fn_random (object *args, object *env) {
   if (integerp(arg)) return number(random(arg->integer));
   else if (floatp(arg)) return makefloat((float)rand()/(float)(RAND_MAX/(arg->single_float)));
   else error(RANDOM, notanumber, arg);
+  return nil;
 }
 
 object *fn_maxfn (object *args, object *env) {
@@ -2621,7 +2727,7 @@ object *fn_maxfn (object *args, object *env) {
     if (integerp(result) && integerp(arg)) {
       if ((arg->integer) > (result->integer)) result = arg;
     } else if ((checkintfloat(MAXFN, arg) > checkintfloat(MAXFN, result))) result = arg;
-    args = cdr(args); 
+    args = cdr(args);
   }
   return result;
 }
@@ -2635,7 +2741,7 @@ object *fn_minfn (object *args, object *env) {
     if (integerp(result) && integerp(arg)) {
       if ((arg->integer) < (result->integer)) result = arg;
     } else if ((checkintfloat(MINFN, arg) < checkintfloat(MINFN, result))) result = arg;
-    args = cdr(args); 
+    args = cdr(args);
   }
   return result;
 }
@@ -2741,6 +2847,7 @@ object *fn_plusp (object *args, object *env) {
   if (floatp(arg)) return ((arg->single_float) > 0.0) ? tee : nil;
   else if (integerp(arg)) return ((arg->integer) > 0) ? tee : nil;
   else error(PLUSP, notanumber, arg);
+  return nil;
 }
 
 object *fn_minusp (object *args, object *env) {
@@ -2749,6 +2856,7 @@ object *fn_minusp (object *args, object *env) {
   if (floatp(arg)) return ((arg->single_float) < 0.0) ? tee : nil;
   else if (integerp(arg)) return ((arg->integer) < 0) ? tee : nil;
   else error(MINUSP, notanumber, arg);
+  return nil;
 }
 
 object *fn_zerop (object *args, object *env) {
@@ -2757,6 +2865,7 @@ object *fn_zerop (object *args, object *env) {
   if (floatp(arg)) return ((arg->single_float) == 0.0) ? tee : nil;
   else if (integerp(arg)) return ((arg->integer) == 0) ? tee : nil;
   else error(ZEROP, notanumber, arg);
+  return nil;
 }
 
 object *fn_oddp (object *args, object *env) {
@@ -2880,7 +2989,7 @@ object *fn_expt (object *args, object *env) {
   object *arg1 = first(args); object *arg2 = second(args);
   float float1 = checkintfloat(EXPT, arg1);
   float value = log(abs(float1)) * checkintfloat(EXPT, arg2);
-  if (integerp(arg1) && integerp(arg2) && ((arg2->integer) > 0) && (abs(value) < 21.4875)) 
+  if (integerp(arg1) && integerp(arg2) && ((arg2->integer) > 0) && (abs(value) < 21.4875))
     return number(intpower(arg1->integer, arg2->integer));
   if (float1 < 0) error2(EXPT, PSTR("invalid result"));
   return makefloat(exp(value));
@@ -2957,7 +3066,7 @@ object *fn_stringp (object *args, object *env) {
 
 bool stringcompare (symbol_t name, object *args, bool lt, bool gt, bool eq) {
   object *arg1 = first(args); if (!stringp(arg1)) error(name, notastring, arg1);
-  object *arg2 = second(args); if (!stringp(arg2)) error(name, notastring, arg2); 
+  object *arg2 = second(args); if (!stringp(arg2)) error(name, notastring, arg2);
   arg1 = cdr(arg1);
   arg2 = cdr(arg2);
   while ((arg1 != NULL) || (arg2 != NULL)) {
@@ -3091,7 +3200,7 @@ object *fn_subseq (object *args, object *env) {
   return result;
 }
 
-object *fn_readfromstring (object *args, object *env) {   
+object *fn_readfromstring (object *args, object *env) {
   (void) env;
   object *arg = first(args);
   if (!stringp(arg)) error(READFROMSTRING, notastring, arg);
@@ -3100,7 +3209,7 @@ object *fn_readfromstring (object *args, object *env) {
   return read(gstr);
 }
 
-object *fn_princtostring (object *args, object *env) {   
+object *fn_princtostring (object *args, object *env) {
   (void) env;
   object *arg = first(args);
   object *obj = startstring(PRINCTOSTRING);
@@ -3109,7 +3218,7 @@ object *fn_princtostring (object *args, object *env) {
   return obj;
 }
 
-object *fn_prin1tostring (object *args, object *env) {   
+object *fn_prin1tostring (object *args, object *env) {
   (void) env;
   object *arg = first(args);
   object *obj = startstring(PRIN1TOSTRING);
@@ -3198,7 +3307,7 @@ object *fn_makunbound (object *args, object *env) {
 
 object *fn_break (object *args, object *env) {
   (void) args;
-  pfstring(PSTR("\rBreak!\r"), pserial);
+  pfstring(PSTR("\nBreak!\n"), pserial);
   BreakLevel++;
   repl(env);
   BreakLevel--;
@@ -3313,7 +3422,7 @@ object *fn_gc (object *obj, object *env) {
   pint(Freespace - initial, pserial);
   pfstring(PSTR(" bytes, Time: "), pserial);
   pint(elapsed, pserial);
-  pfstring(PSTR(" us\r"), pserial);
+  pfstring(PSTR(" us\n"), pserial);
   return nil;
 }
 
@@ -3378,7 +3487,7 @@ object *fn_analogread (object *args, object *env) {
   checkanalogread(pin);
   return number(analogRead(pin));
 }
- 
+
 object *fn_analogwrite (object *args, object *env) {
   (void) env;
   int pin = checkinteger(ANALOGWRITE, first(args));
@@ -3516,50 +3625,56 @@ object *fn_format (object *args, object *env) {
   int len = stringlength(formatstr);
   uint8_t n = 0, width = 0, w, bra = 0;
   char pad = ' ';
-  bool tilde = false, comma, quote;
+  bool tilde = false, mute = false, comma, quote;
   while (n < len) {
     char ch = nthchar(formatstr, n);
     char ch2 = ch & ~0x20; // force to upper case
     if (tilde) {
-      if (comma && quote) { pad = ch; comma = false, quote = false; }
-      else if (ch == '\'') {
-        if (comma) quote = true; 
-        else formaterr(formatstr, PSTR("quote not valid"), n);
-      }
-      else if (ch == '~') { pfun('~'); tilde = false; }
-      else if (ch >= '0' && ch <= '9') width = width*10 + ch - '0';
-      else if (ch == ',') comma = true;
-      else if (ch == '%') { pln(pfun); tilde = false; }
-      else if (ch == '&') { pfl(pfun); tilde = false; }
-      else if (ch == '{') {
-        if (save != NULL) formaterr(formatstr, PSTR("can't nest ~{"), n);
-        if (args == NULL) formaterr(formatstr, noargument, n);
-        if (!listp(first(args))) formaterr(formatstr, notalist, n);
-        save = args; args = first(args); bra = n; tilde = false;
-      }
-      else if (ch == '}') {
+     if (ch == '}') {
         if (save == NULL) formaterr(formatstr, PSTR("no matching ~{"), n);
         if (args == NULL) { args = cdr(save); save = NULL; } else n = bra; 
-        tilde = false;
+        mute = false; tilde = false;
+      }      
+      else if (!mute) {
+        if (comma && quote) { pad = ch; comma = false, quote = false; }
+        else if (ch == '\'') {
+          if (comma) quote = true; 
+          else formaterr(formatstr, PSTR("quote not valid"), n);
+        }
+        else if (ch == '~') { pfun('~'); tilde = false; }
+        else if (ch >= '0' && ch <= '9') width = width*10 + ch - '0';
+        else if (ch == ',') comma = true;
+        else if (ch == '%') { pln(pfun); tilde = false; }
+        else if (ch == '&') { pfl(pfun); tilde = false; }
+        else if (ch == '^') {
+          if (save != NULL && args == NULL) mute = true;
+          tilde = false;
+        }
+        else if (ch == '{') {
+          if (save != NULL) formaterr(formatstr, PSTR("can't nest ~{"), n);
+          if (args == NULL) formaterr(formatstr, noargument, n);
+          if (!listp(first(args))) formaterr(formatstr, notalist, n);
+          save = args; args = first(args); bra = n; tilde = false;
+        }
+        else if (ch2 == 'A' || ch2 == 'S' || ch2 == 'D' || ch2 == 'G' || ch2 == 'X') {
+          if (args == NULL) formaterr(formatstr, noargument, n);
+          object *arg = first(args); args = cdr(args);
+          uint8_t aw = atomwidth(arg);
+          if (width < aw) w = 0; else w = width-aw;
+          tilde = false;
+          if (ch2 == 'A') { prin1object(arg, pfun); indent(w, pad, pfun); }
+          else if (ch2 == 'S') { printobject(arg, pfun); indent(w, pad, pfun); }
+          else if (ch2 == 'D' || ch2 == 'G') { indent(w, pad, pfun); prin1object(arg, pfun); }
+          else if (ch2 == 'X' && integerp(arg)) {
+            uint8_t hw = hexwidth(arg); if (width < hw) w = 0; else w = width-hw;
+            indent(w, pad, pfun); pinthex(arg->integer, pfun);
+          } else if (ch2 == 'X') { indent(w, pad, pfun); prin1object(arg, pfun); }
+          tilde = false;
+        } else formaterr(formatstr, PSTR("invalid directive"), n);
       }
-      else if (ch2 == 'A' || ch2 == 'S' || ch2 == 'D' || ch2 == 'G' || ch2 == 'X') {
-        if (args == NULL) formaterr(formatstr, noargument, n);
-        object *arg = first(args); args = cdr(args);
-        uint8_t aw = atomwidth(arg);
-        if (width < aw) w = 0; else w = width-aw;
-        tilde = false;
-        if (ch2 == 'A') { prin1object(arg, pfun); indent(w, pad, pfun); }
-        else if (ch2 == 'S') { printobject(arg, pfun); indent(w, pad, pfun); }
-        else if (ch2 == 'D' || ch2 == 'G') { indent(w, pad, pfun); prin1object(arg, pfun); }
-        else if (ch2 == 'X' && integerp(arg)) {
-          uint8_t hw = hexwidth(arg); if (width < hw) w = 0; else w = width-hw;
-          indent(w, pad, pfun); pinthex(arg->integer, pfun);
-        } else if (ch2 == 'X') { indent(w, pad, pfun); prin1object(arg, pfun); }
-        tilde = false;
-      } else formaterr(formatstr, PSTR("invalid directive"), n);
     } else {
       if (ch == '~') { tilde = true; pad = ' '; width = 0; comma = false; quote = false; }
-      else pfun(ch);
+      else if (!mute) pfun(ch);
     }
     n++;
   }
@@ -3590,7 +3705,7 @@ object *fn_require (object *args, object *env) {
     }
     line = read(glibrary);
   }
-  return nil; 
+  return nil;
 }
 
 object *fn_listlibrary (object *args, object *env) {
@@ -3604,7 +3719,7 @@ object *fn_listlibrary (object *args, object *env) {
     }
     line = read(glibrary);
   }
-  return symbol(NOTHING); 
+  return symbol(NOTHING);
 }
 
 // Graphics functions
@@ -3615,8 +3730,8 @@ object *fn_drawpixel (object *args, object *env) {
   uint16_t colour = COLOR_WHITE;
   if (cddr(args) != NULL) colour = checkinteger(DRAWPIXEL, third(args));
   tft.drawPixel(checkinteger(DRAWPIXEL, first(args)), checkinteger(DRAWPIXEL, second(args)), colour);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_drawline (object *args, object *env) {
@@ -3626,8 +3741,8 @@ object *fn_drawline (object *args, object *env) {
   for (int i=0; i<4; i++) { params[i] = checkinteger(DRAWLINE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWLINE, car(args));
   tft.drawLine(params[0], params[1], params[2], params[3], colour);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_drawrect (object *args, object *env) {
@@ -3637,8 +3752,8 @@ object *fn_drawrect (object *args, object *env) {
   for (int i=0; i<4; i++) { params[i] = checkinteger(DRAWRECT, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWRECT, car(args));
   tft.drawRect(params[0], params[1], params[2], params[3], colour);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_fillrect (object *args, object *env) {
@@ -3648,8 +3763,8 @@ object *fn_fillrect (object *args, object *env) {
   for (int i=0; i<4; i++) { params[i] = checkinteger(FILLRECT, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(FILLRECT, car(args));
   tft.fillRect(params[0], params[1], params[2], params[3], colour);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_drawcircle (object *args, object *env) {
@@ -3659,8 +3774,8 @@ object *fn_drawcircle (object *args, object *env) {
   for (int i=0; i<3; i++) { params[i] = checkinteger(DRAWCIRCLE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWCIRCLE, car(args));
   tft.drawCircle(params[0], params[1], params[2], colour);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_fillcircle (object *args, object *env) {
@@ -3670,8 +3785,8 @@ object *fn_fillcircle (object *args, object *env) {
   for (int i=0; i<3; i++) { params[i] = checkinteger(FILLCIRCLE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(FILLCIRCLE, car(args));
   tft.fillCircle(params[0], params[1], params[2], colour);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_drawroundrect (object *args, object *env) {
@@ -3681,8 +3796,8 @@ object *fn_drawroundrect (object *args, object *env) {
   for (int i=0; i<5; i++) { params[i] = checkinteger(DRAWROUNDRECT, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWROUNDRECT, car(args));
   tft.drawRoundRect(params[0], params[1], params[2], params[3], params[4], colour);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_fillroundrect (object *args, object *env) {
@@ -3692,8 +3807,8 @@ object *fn_fillroundrect (object *args, object *env) {
   for (int i=0; i<5; i++) { params[i] = checkinteger(FILLROUNDRECT, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(FILLROUNDRECT, car(args));
   tft.fillRoundRect(params[0], params[1], params[2], params[3], params[4], colour);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_drawtriangle (object *args, object *env) {
@@ -3703,8 +3818,8 @@ object *fn_drawtriangle (object *args, object *env) {
   for (int i=0; i<6; i++) { params[i] = checkinteger(DRAWTRIANGLE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWTRIANGLE, car(args));
   tft.drawTriangle(params[0], params[1], params[2], params[3], params[4], params[5], colour);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_filltriangle (object *args, object *env) {
@@ -3714,8 +3829,8 @@ object *fn_filltriangle (object *args, object *env) {
   for (int i=0; i<6; i++) { params[i] = checkinteger(FILLTRIANGLE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(FILLTRIANGLE, car(args));
   tft.fillTriangle(params[0], params[1], params[2], params[3], params[4], params[5], colour);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_drawchar (object *args, object *env) {
@@ -3734,16 +3849,16 @@ object *fn_drawchar (object *args, object *env) {
   }
   tft.drawChar(checkinteger(DRAWCHAR, first(args)), checkinteger(DRAWCHAR, second(args)), checkchar(DRAWCHAR, third(args)),
     colour, bg, size);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_setcursor (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
   tft.setCursor(checkinteger(SETCURSOR, first(args)), checkinteger(SETCURSOR, second(args)));
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_settextcolor (object *args, object *env) {
@@ -3751,24 +3866,24 @@ object *fn_settextcolor (object *args, object *env) {
   (void) env;
   if (cdr(args) != NULL) tft.setTextColor(checkinteger(SETTEXTCOLOR, first(args)), checkinteger(SETTEXTCOLOR, second(args)));
   else tft.setTextColor(checkinteger(SETTEXTCOLOR, first(args)));
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_settextsize (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
   tft.setTextSize(checkinteger(SETTEXTSIZE, first(args)));
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_settextwrap (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
   tft.setTextWrap(first(args) != NULL);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_fillscreen (object *args, object *env) {
@@ -3777,24 +3892,24 @@ object *fn_fillscreen (object *args, object *env) {
   uint16_t colour = COLOR_BLACK;
   if (args != NULL) colour = checkinteger(FILLSCREEN, first(args));
   tft.fillScreen(colour);
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_setrotation (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
   tft.setRotation(checkinteger(SETROTATION, first(args)));
-  return nil;
 #endif
+  return nil;
 }
 
 object *fn_invertdisplay (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
   tft.invertDisplay(first(args) != NULL);
-  return nil;
 #endif
+  return nil;
 }
 
 // Insert your own function definitions here
@@ -3806,208 +3921,210 @@ const char string1[] PROGMEM = "t";
 const char string2[] PROGMEM = "nothing";
 const char string3[] PROGMEM = "&optional";
 const char string4[] PROGMEM = ":initial-element";
-const char string5[] PROGMEM = "&rest";
-const char string6[] PROGMEM = "lambda";
-const char string7[] PROGMEM = "let";
-const char string8[] PROGMEM = "let*";
-const char string9[] PROGMEM = "closure";
-const char string10[] PROGMEM = "";
-const char string11[] PROGMEM = "quote";
-const char string12[] PROGMEM = "defun";
-const char string13[] PROGMEM = "defvar";
-const char string14[] PROGMEM = "setq";
-const char string15[] PROGMEM = "loop";
-const char string16[] PROGMEM = "return";
-const char string17[] PROGMEM = "push";
-const char string18[] PROGMEM = "pop";
-const char string19[] PROGMEM = "incf";
-const char string20[] PROGMEM = "decf";
-const char string21[] PROGMEM = "setf";
-const char string22[] PROGMEM = "dolist";
-const char string23[] PROGMEM = "dotimes";
-const char string24[] PROGMEM = "trace";
-const char string25[] PROGMEM = "untrace";
-const char string26[] PROGMEM = "for-millis";
-const char string27[] PROGMEM = "with-output-to-string";
-const char string28[] PROGMEM = "with-serial";
-const char string29[] PROGMEM = "with-i2c";
-const char string30[] PROGMEM = "with-spi";
-const char string31[] PROGMEM = "with-sd-card";
-const char string32[] PROGMEM = "with-gfx";
-const char string33[] PROGMEM = "defcode";
-const char string34[] PROGMEM = "";
-const char string35[] PROGMEM = "progn";
-const char string36[] PROGMEM = "if";
-const char string37[] PROGMEM = "cond";
-const char string38[] PROGMEM = "when";
-const char string39[] PROGMEM = "unless";
-const char string40[] PROGMEM = "case";
-const char string41[] PROGMEM = "and";
-const char string42[] PROGMEM = "or";
-const char string43[] PROGMEM = "";
-const char string44[] PROGMEM = "not";
-const char string45[] PROGMEM = "null";
-const char string46[] PROGMEM = "cons";
-const char string47[] PROGMEM = "atom";
-const char string48[] PROGMEM = "listp";
-const char string49[] PROGMEM = "consp";
-const char string50[] PROGMEM = "symbolp";
-const char string51[] PROGMEM = "arrayp";
-const char string52[] PROGMEM = "boundp";
-const char string53[] PROGMEM = "setfn";
-const char string54[] PROGMEM = "streamp";
-const char string55[] PROGMEM = "eq";
-const char string56[] PROGMEM = "car";
-const char string57[] PROGMEM = "first";
-const char string58[] PROGMEM = "cdr";
-const char string59[] PROGMEM = "rest";
-const char string60[] PROGMEM = "caar";
-const char string61[] PROGMEM = "cadr";
-const char string62[] PROGMEM = "second";
-const char string63[] PROGMEM = "cdar";
-const char string64[] PROGMEM = "cddr";
-const char string65[] PROGMEM = "caaar";
-const char string66[] PROGMEM = "caadr";
-const char string67[] PROGMEM = "cadar";
-const char string68[] PROGMEM = "caddr";
-const char string69[] PROGMEM = "third";
-const char string70[] PROGMEM = "cdaar";
-const char string71[] PROGMEM = "cdadr";
-const char string72[] PROGMEM = "cddar";
-const char string73[] PROGMEM = "cdddr";
-const char string74[] PROGMEM = "length";
-const char string75[] PROGMEM = "array-dimensions";
-const char string76[] PROGMEM = "list";
-const char string77[] PROGMEM = "make-array";
-const char string78[] PROGMEM = "reverse";
-const char string79[] PROGMEM = "nth";
-const char string80[] PROGMEM = "aref";
-const char string81[] PROGMEM = "assoc";
-const char string82[] PROGMEM = "member";
-const char string83[] PROGMEM = "apply";
-const char string84[] PROGMEM = "funcall";
-const char string85[] PROGMEM = "append";
-const char string86[] PROGMEM = "mapc";
-const char string87[] PROGMEM = "mapcar";
-const char string88[] PROGMEM = "mapcan";
-const char string89[] PROGMEM = "+";
-const char string90[] PROGMEM = "-";
-const char string91[] PROGMEM = "*";
-const char string92[] PROGMEM = "/";
-const char string93[] PROGMEM = "mod";
-const char string94[] PROGMEM = "1+";
-const char string95[] PROGMEM = "1-";
-const char string96[] PROGMEM = "abs";
-const char string97[] PROGMEM = "random";
-const char string98[] PROGMEM = "max";
-const char string99[] PROGMEM = "min";
-const char string100[] PROGMEM = "/=";
-const char string101[] PROGMEM = "=";
-const char string102[] PROGMEM = "<";
-const char string103[] PROGMEM = "<=";
-const char string104[] PROGMEM = ">";
-const char string105[] PROGMEM = ">=";
-const char string106[] PROGMEM = "plusp";
-const char string107[] PROGMEM = "minusp";
-const char string108[] PROGMEM = "zerop";
-const char string109[] PROGMEM = "oddp";
-const char string110[] PROGMEM = "evenp";
-const char string111[] PROGMEM = "integerp";
-const char string112[] PROGMEM = "numberp";
-const char string113[] PROGMEM = "float";
-const char string114[] PROGMEM = "floatp";
-const char string115[] PROGMEM = "sin";
-const char string116[] PROGMEM = "cos";
-const char string117[] PROGMEM = "tan";
-const char string118[] PROGMEM = "asin";
-const char string119[] PROGMEM = "acos";
-const char string120[] PROGMEM = "atan";
-const char string121[] PROGMEM = "sinh";
-const char string122[] PROGMEM = "cosh";
-const char string123[] PROGMEM = "tanh";
-const char string124[] PROGMEM = "exp";
-const char string125[] PROGMEM = "sqrt";
-const char string126[] PROGMEM = "log";
-const char string127[] PROGMEM = "expt";
-const char string128[] PROGMEM = "ceiling";
-const char string129[] PROGMEM = "floor";
-const char string130[] PROGMEM = "truncate";
-const char string131[] PROGMEM = "round";
-const char string132[] PROGMEM = "char";
-const char string133[] PROGMEM = "char-code";
-const char string134[] PROGMEM = "code-char";
-const char string135[] PROGMEM = "characterp";
-const char string136[] PROGMEM = "stringp";
-const char string137[] PROGMEM = "string=";
-const char string138[] PROGMEM = "string<";
-const char string139[] PROGMEM = "string>";
-const char string140[] PROGMEM = "sort";
-const char string141[] PROGMEM = "string";
-const char string142[] PROGMEM = "concatenate";
-const char string143[] PROGMEM = "subseq";
-const char string144[] PROGMEM = "read-from-string";
-const char string145[] PROGMEM = "princ-to-string";
-const char string146[] PROGMEM = "prin1-to-string";
-const char string147[] PROGMEM = "logand";
-const char string148[] PROGMEM = "logior";
-const char string149[] PROGMEM = "logxor";
-const char string150[] PROGMEM = "lognot";
-const char string151[] PROGMEM = "ash";
-const char string152[] PROGMEM = "logbitp";
-const char string153[] PROGMEM = "eval";
-const char string154[] PROGMEM = "globals";
-const char string155[] PROGMEM = "locals";
-const char string156[] PROGMEM = "makunbound";
-const char string157[] PROGMEM = "break";
-const char string158[] PROGMEM = "read";
-const char string159[] PROGMEM = "prin1";
-const char string160[] PROGMEM = "print";
-const char string161[] PROGMEM = "princ";
-const char string162[] PROGMEM = "terpri";
-const char string163[] PROGMEM = "read-byte";
-const char string164[] PROGMEM = "read-line";
-const char string165[] PROGMEM = "write-byte";
-const char string166[] PROGMEM = "write-string";
-const char string167[] PROGMEM = "write-line";
-const char string168[] PROGMEM = "restart-i2c";
-const char string169[] PROGMEM = "gc";
-const char string170[] PROGMEM = "room";
-const char string171[] PROGMEM = "save-image";
-const char string172[] PROGMEM = "load-image";
-const char string173[] PROGMEM = "cls";
-const char string174[] PROGMEM = "pinmode";
-const char string175[] PROGMEM = "digitalread";
-const char string176[] PROGMEM = "digitalwrite";
-const char string177[] PROGMEM = "analogread";
-const char string178[] PROGMEM = "analogwrite";
-const char string179[] PROGMEM = "delay";
-const char string180[] PROGMEM = "millis";
-const char string181[] PROGMEM = "sleep";
-const char string182[] PROGMEM = "note";
-const char string183[] PROGMEM = "edit";
-const char string184[] PROGMEM = "pprint";
-const char string185[] PROGMEM = "pprintall";
-const char string186[] PROGMEM = "format";
-const char string187[] PROGMEM = "require";
-const char string188[] PROGMEM = "list-library";
-const char string189[] PROGMEM = "draw-pixel";
-const char string190[] PROGMEM = "draw-line";
-const char string191[] PROGMEM = "draw-rect";
-const char string192[] PROGMEM = "fill-rect";
-const char string193[] PROGMEM = "draw-circle";
-const char string194[] PROGMEM = "fill-circle";
-const char string195[] PROGMEM = "draw-round-rect";
-const char string196[] PROGMEM = "fill-round-rect";
-const char string197[] PROGMEM = "draw-triangle";
-const char string198[] PROGMEM = "fill-triangle";
-const char string199[] PROGMEM = "draw-char";
-const char string200[] PROGMEM = "set-cursor";
-const char string201[] PROGMEM = "set-text-color";
-const char string202[] PROGMEM = "set-text-size";
-const char string203[] PROGMEM = "set-text-wrap";
-const char string204[] PROGMEM = "fill-screen";
-const char string205[] PROGMEM = "set-rotation";
-const char string206[] PROGMEM = "invert-display";
+const char string5[] PROGMEM = ":element-type";
+const char string6[] PROGMEM = "bit";
+const char string7[] PROGMEM = "&rest";
+const char string8[] PROGMEM = "lambda";
+const char string9[] PROGMEM = "let";
+const char string10[] PROGMEM = "let*";
+const char string11[] PROGMEM = "closure";
+const char string12[] PROGMEM = "";
+const char string13[] PROGMEM = "quote";
+const char string14[] PROGMEM = "defun";
+const char string15[] PROGMEM = "defvar";
+const char string16[] PROGMEM = "setq";
+const char string17[] PROGMEM = "loop";
+const char string18[] PROGMEM = "return";
+const char string19[] PROGMEM = "push";
+const char string20[] PROGMEM = "pop";
+const char string21[] PROGMEM = "incf";
+const char string22[] PROGMEM = "decf";
+const char string23[] PROGMEM = "setf";
+const char string24[] PROGMEM = "dolist";
+const char string25[] PROGMEM = "dotimes";
+const char string26[] PROGMEM = "trace";
+const char string27[] PROGMEM = "untrace";
+const char string28[] PROGMEM = "for-millis";
+const char string29[] PROGMEM = "with-output-to-string";
+const char string30[] PROGMEM = "with-serial";
+const char string31[] PROGMEM = "with-i2c";
+const char string32[] PROGMEM = "with-spi";
+const char string33[] PROGMEM = "with-sd-card";
+const char string34[] PROGMEM = "with-gfx";
+const char string35[] PROGMEM = "defcode";
+const char string36[] PROGMEM = "";
+const char string37[] PROGMEM = "progn";
+const char string38[] PROGMEM = "if";
+const char string39[] PROGMEM = "cond";
+const char string40[] PROGMEM = "when";
+const char string41[] PROGMEM = "unless";
+const char string42[] PROGMEM = "case";
+const char string43[] PROGMEM = "and";
+const char string44[] PROGMEM = "or";
+const char string45[] PROGMEM = "";
+const char string46[] PROGMEM = "not";
+const char string47[] PROGMEM = "null";
+const char string48[] PROGMEM = "cons";
+const char string49[] PROGMEM = "atom";
+const char string50[] PROGMEM = "listp";
+const char string51[] PROGMEM = "consp";
+const char string52[] PROGMEM = "symbolp";
+const char string53[] PROGMEM = "arrayp";
+const char string54[] PROGMEM = "boundp";
+const char string55[] PROGMEM = "setfn";
+const char string56[] PROGMEM = "streamp";
+const char string57[] PROGMEM = "eq";
+const char string58[] PROGMEM = "car";
+const char string59[] PROGMEM = "first";
+const char string60[] PROGMEM = "cdr";
+const char string61[] PROGMEM = "rest";
+const char string62[] PROGMEM = "caar";
+const char string63[] PROGMEM = "cadr";
+const char string64[] PROGMEM = "second";
+const char string65[] PROGMEM = "cdar";
+const char string66[] PROGMEM = "cddr";
+const char string67[] PROGMEM = "caaar";
+const char string68[] PROGMEM = "caadr";
+const char string69[] PROGMEM = "cadar";
+const char string70[] PROGMEM = "caddr";
+const char string71[] PROGMEM = "third";
+const char string72[] PROGMEM = "cdaar";
+const char string73[] PROGMEM = "cdadr";
+const char string74[] PROGMEM = "cddar";
+const char string75[] PROGMEM = "cdddr";
+const char string76[] PROGMEM = "length";
+const char string77[] PROGMEM = "array-dimensions";
+const char string78[] PROGMEM = "list";
+const char string79[] PROGMEM = "make-array";
+const char string80[] PROGMEM = "reverse";
+const char string81[] PROGMEM = "nth";
+const char string82[] PROGMEM = "aref";
+const char string83[] PROGMEM = "assoc";
+const char string84[] PROGMEM = "member";
+const char string85[] PROGMEM = "apply";
+const char string86[] PROGMEM = "funcall";
+const char string87[] PROGMEM = "append";
+const char string88[] PROGMEM = "mapc";
+const char string89[] PROGMEM = "mapcar";
+const char string90[] PROGMEM = "mapcan";
+const char string91[] PROGMEM = "+";
+const char string92[] PROGMEM = "-";
+const char string93[] PROGMEM = "*";
+const char string94[] PROGMEM = "/";
+const char string95[] PROGMEM = "mod";
+const char string96[] PROGMEM = "1+";
+const char string97[] PROGMEM = "1-";
+const char string98[] PROGMEM = "abs";
+const char string99[] PROGMEM = "random";
+const char string100[] PROGMEM = "max";
+const char string101[] PROGMEM = "min";
+const char string102[] PROGMEM = "/=";
+const char string103[] PROGMEM = "=";
+const char string104[] PROGMEM = "<";
+const char string105[] PROGMEM = "<=";
+const char string106[] PROGMEM = ">";
+const char string107[] PROGMEM = ">=";
+const char string108[] PROGMEM = "plusp";
+const char string109[] PROGMEM = "minusp";
+const char string110[] PROGMEM = "zerop";
+const char string111[] PROGMEM = "oddp";
+const char string112[] PROGMEM = "evenp";
+const char string113[] PROGMEM = "integerp";
+const char string114[] PROGMEM = "numberp";
+const char string115[] PROGMEM = "float";
+const char string116[] PROGMEM = "floatp";
+const char string117[] PROGMEM = "sin";
+const char string118[] PROGMEM = "cos";
+const char string119[] PROGMEM = "tan";
+const char string120[] PROGMEM = "asin";
+const char string121[] PROGMEM = "acos";
+const char string122[] PROGMEM = "atan";
+const char string123[] PROGMEM = "sinh";
+const char string124[] PROGMEM = "cosh";
+const char string125[] PROGMEM = "tanh";
+const char string126[] PROGMEM = "exp";
+const char string127[] PROGMEM = "sqrt";
+const char string128[] PROGMEM = "log";
+const char string129[] PROGMEM = "expt";
+const char string130[] PROGMEM = "ceiling";
+const char string131[] PROGMEM = "floor";
+const char string132[] PROGMEM = "truncate";
+const char string133[] PROGMEM = "round";
+const char string134[] PROGMEM = "char";
+const char string135[] PROGMEM = "char-code";
+const char string136[] PROGMEM = "code-char";
+const char string137[] PROGMEM = "characterp";
+const char string138[] PROGMEM = "stringp";
+const char string139[] PROGMEM = "string=";
+const char string140[] PROGMEM = "string<";
+const char string141[] PROGMEM = "string>";
+const char string142[] PROGMEM = "sort";
+const char string143[] PROGMEM = "string";
+const char string144[] PROGMEM = "concatenate";
+const char string145[] PROGMEM = "subseq";
+const char string146[] PROGMEM = "read-from-string";
+const char string147[] PROGMEM = "princ-to-string";
+const char string148[] PROGMEM = "prin1-to-string";
+const char string149[] PROGMEM = "logand";
+const char string150[] PROGMEM = "logior";
+const char string151[] PROGMEM = "logxor";
+const char string152[] PROGMEM = "lognot";
+const char string153[] PROGMEM = "ash";
+const char string154[] PROGMEM = "logbitp";
+const char string155[] PROGMEM = "eval";
+const char string156[] PROGMEM = "globals";
+const char string157[] PROGMEM = "locals";
+const char string158[] PROGMEM = "makunbound";
+const char string159[] PROGMEM = "break";
+const char string160[] PROGMEM = "read";
+const char string161[] PROGMEM = "prin1";
+const char string162[] PROGMEM = "print";
+const char string163[] PROGMEM = "princ";
+const char string164[] PROGMEM = "terpri";
+const char string165[] PROGMEM = "read-byte";
+const char string166[] PROGMEM = "read-line";
+const char string167[] PROGMEM = "write-byte";
+const char string168[] PROGMEM = "write-string";
+const char string169[] PROGMEM = "write-line";
+const char string170[] PROGMEM = "restart-i2c";
+const char string171[] PROGMEM = "gc";
+const char string172[] PROGMEM = "room";
+const char string173[] PROGMEM = "save-image";
+const char string174[] PROGMEM = "load-image";
+const char string175[] PROGMEM = "cls";
+const char string176[] PROGMEM = "pinmode";
+const char string177[] PROGMEM = "digitalread";
+const char string178[] PROGMEM = "digitalwrite";
+const char string179[] PROGMEM = "analogread";
+const char string180[] PROGMEM = "analogwrite";
+const char string181[] PROGMEM = "delay";
+const char string182[] PROGMEM = "millis";
+const char string183[] PROGMEM = "sleep";
+const char string184[] PROGMEM = "note";
+const char string185[] PROGMEM = "edit";
+const char string186[] PROGMEM = "pprint";
+const char string187[] PROGMEM = "pprintall";
+const char string188[] PROGMEM = "format";
+const char string189[] PROGMEM = "require";
+const char string190[] PROGMEM = "list-library";
+const char string191[] PROGMEM = "draw-pixel";
+const char string192[] PROGMEM = "draw-line";
+const char string193[] PROGMEM = "draw-rect";
+const char string194[] PROGMEM = "fill-rect";
+const char string195[] PROGMEM = "draw-circle";
+const char string196[] PROGMEM = "fill-circle";
+const char string197[] PROGMEM = "draw-round-rect";
+const char string198[] PROGMEM = "fill-round-rect";
+const char string199[] PROGMEM = "draw-triangle";
+const char string200[] PROGMEM = "fill-triangle";
+const char string201[] PROGMEM = "draw-char";
+const char string202[] PROGMEM = "set-cursor";
+const char string203[] PROGMEM = "set-text-color";
+const char string204[] PROGMEM = "set-text-size";
+const char string205[] PROGMEM = "set-text-wrap";
+const char string206[] PROGMEM = "fill-screen";
+const char string207[] PROGMEM = "set-rotation";
+const char string208[] PROGMEM = "invert-display";
 
 // Third parameter is no. of arguments; 1st hex digit is min, 2nd hex digit is max, 0xF is unlimited
 const tbl_entry_t lookup_table[] PROGMEM = {
@@ -4017,207 +4134,209 @@ const tbl_entry_t lookup_table[] PROGMEM = {
   { string3, NULL, 0x00 },
   { string4, NULL, 0x00 },
   { string5, NULL, 0x00 },
-  { string6, NULL, 0x0F },
-  { string7, NULL, 0x0F },
+  { string6, NULL, 0x00 },
+  { string7, NULL, 0x00 },
   { string8, NULL, 0x0F },
   { string9, NULL, 0x0F },
-  { string10, NULL, 0x00 },
-  { string11, sp_quote, 0x11 },
-  { string12, sp_defun, 0x2F },
-  { string13, sp_defvar, 0x12 },
-  { string14, sp_setq, 0x2F },
-  { string15, sp_loop, 0x0F },
-  { string16, sp_return, 0x0F },
-  { string17, sp_push, 0x22 },
-  { string18, sp_pop, 0x11 },
-  { string19, sp_incf, 0x12 },
-  { string20, sp_decf, 0x12 },
-  { string21, sp_setf, 0x2F },
-  { string22, sp_dolist, 0x1F },
-  { string23, sp_dotimes, 0x1F },
-  { string24, sp_trace, 0x01 },
-  { string25, sp_untrace, 0x01 },
-  { string26, sp_formillis, 0x1F },
-  { string27, sp_withoutputtostring, 0x1F },
-  { string28, sp_withserial, 0x1F },
-  { string29, sp_withi2c, 0x1F },
-  { string30, sp_withspi, 0x1F },
-  { string31, sp_withsdcard, 0x2F },
-  { string32, sp_withgfx, 0x1F },
-  { string33, sp_defcode, 0x0F },
-  { string34, NULL, 0x00 },
-  { string35, tf_progn, 0x0F },
-  { string36, tf_if, 0x23 },
-  { string37, tf_cond, 0x0F },
-  { string38, tf_when, 0x1F },
-  { string39, tf_unless, 0x1F },
-  { string40, tf_case, 0x1F },
-  { string41, tf_and, 0x0F },
-  { string42, tf_or, 0x0F },
-  { string43, NULL, 0x00 },
-  { string44, fn_not, 0x11 },
-  { string45, fn_not, 0x11 },
-  { string46, fn_cons, 0x22 },
-  { string47, fn_atom, 0x11 },
-  { string48, fn_listp, 0x11 },
-  { string49, fn_consp, 0x11 },
-  { string50, fn_symbolp, 0x11 },
-  { string51, fn_arrayp, 0x11 },
-  { string52, fn_boundp, 0x11 },
-  { string53, fn_setfn, 0x2F },
-  { string54, fn_streamp, 0x11 },
-  { string55, fn_eq, 0x22 },
-  { string56, fn_car, 0x11 },
-  { string57, fn_car, 0x11 },
-  { string58, fn_cdr, 0x11 },
-  { string59, fn_cdr, 0x11 },
-  { string60, fn_caar, 0x11 },
-  { string61, fn_cadr, 0x11 },
-  { string62, fn_cadr, 0x11 },
-  { string63, fn_cdar, 0x11 },
-  { string64, fn_cddr, 0x11 },
-  { string65, fn_caaar, 0x11 },
-  { string66, fn_caadr, 0x11 },
-  { string67, fn_cadar, 0x11 },
-  { string68, fn_caddr, 0x11 },
-  { string69, fn_caddr, 0x11 },
-  { string70, fn_cdaar, 0x11 },
-  { string71, fn_cdadr, 0x11 },
-  { string72, fn_cddar, 0x11 },
-  { string73, fn_cdddr, 0x11 },
-  { string74, fn_length, 0x11 },
-  { string75, fn_arraydimensions, 0x11 },
-  { string76, fn_list, 0x0F },
-  { string77, fn_makearray, 0x13 },
-  { string78, fn_reverse, 0x11 },
-  { string79, fn_nth, 0x22 },
-  { string80, fn_aref, 0x2F },
-  { string81, fn_assoc, 0x22 },
-  { string82, fn_member, 0x22 },
-  { string83, fn_apply, 0x2F },
-  { string84, fn_funcall, 0x1F },
-  { string85, fn_append, 0x0F },
-  { string86, fn_mapc, 0x2F },
-  { string87, fn_mapcar, 0x2F },
-  { string88, fn_mapcan, 0x2F },
-  { string89, fn_add, 0x0F },
-  { string90, fn_subtract, 0x1F },
-  { string91, fn_multiply, 0x0F },
-  { string92, fn_divide, 0x1F },
-  { string93, fn_mod, 0x22 },
-  { string94, fn_oneplus, 0x11 },
-  { string95, fn_oneminus, 0x11 },
-  { string96, fn_abs, 0x11 },
-  { string97, fn_random, 0x11 },
-  { string98, fn_maxfn, 0x1F },
-  { string99, fn_minfn, 0x1F },
-  { string100, fn_noteq, 0x1F },
-  { string101, fn_numeq, 0x1F },
-  { string102, fn_less, 0x1F },
-  { string103, fn_lesseq, 0x1F },
-  { string104, fn_greater, 0x1F },
-  { string105, fn_greatereq, 0x1F },
-  { string106, fn_plusp, 0x11 },
-  { string107, fn_minusp, 0x11 },
-  { string108, fn_zerop, 0x11 },
-  { string109, fn_oddp, 0x11 },
-  { string110, fn_evenp, 0x11 },
-  { string111, fn_integerp, 0x11 },
-  { string112, fn_numberp, 0x11 },
-  { string113, fn_floatfn, 0x11 },
-  { string114, fn_floatp, 0x11 },
-  { string115, fn_sin, 0x11 },
-  { string116, fn_cos, 0x11 },
-  { string117, fn_tan, 0x11 },
-  { string118, fn_asin, 0x11 },
-  { string119, fn_acos, 0x11 },
-  { string120, fn_atan, 0x12 },
-  { string121, fn_sinh, 0x11 },
-  { string122, fn_cosh, 0x11 },
-  { string123, fn_tanh, 0x11 },
-  { string124, fn_exp, 0x11 },
-  { string125, fn_sqrt, 0x11 },
-  { string126, fn_log, 0x12 },
-  { string127, fn_expt, 0x22 },
-  { string128, fn_ceiling, 0x12 },
-  { string129, fn_floor, 0x12 },
-  { string130, fn_truncate, 0x12 },
-  { string131, fn_round, 0x12 },
-  { string132, fn_char, 0x22 },
-  { string133, fn_charcode, 0x11 },
-  { string134, fn_codechar, 0x11 },
-  { string135, fn_characterp, 0x11 },
-  { string136, fn_stringp, 0x11 },
-  { string137, fn_stringeq, 0x22 },
-  { string138, fn_stringless, 0x22 },
-  { string139, fn_stringgreater, 0x22 },
-  { string140, fn_sort, 0x22 },
-  { string141, fn_stringfn, 0x11 },
-  { string142, fn_concatenate, 0x1F },
-  { string143, fn_subseq, 0x23 },
-  { string144, fn_readfromstring, 0x11 },
-  { string145, fn_princtostring, 0x11 },
-  { string146, fn_prin1tostring, 0x11 },
-  { string147, fn_logand, 0x0F },
-  { string148, fn_logior, 0x0F },
-  { string149, fn_logxor, 0x0F },
-  { string150, fn_lognot, 0x11 },
-  { string151, fn_ash, 0x22 },
-  { string152, fn_logbitp, 0x22 },
-  { string153, fn_eval, 0x11 },
-  { string154, fn_globals, 0x00 },
-  { string155, fn_locals, 0x00 },
-  { string156, fn_makunbound, 0x11 },
-  { string157, fn_break, 0x00 },
-  { string158, fn_read, 0x01 },
-  { string159, fn_prin1, 0x12 },
-  { string160, fn_print, 0x12 },
-  { string161, fn_princ, 0x12 },
-  { string162, fn_terpri, 0x01 },
-  { string163, fn_readbyte, 0x02 },
-  { string164, fn_readline, 0x01 },
-  { string165, fn_writebyte, 0x12 },
-  { string166, fn_writestring, 0x12 },
-  { string167, fn_writeline, 0x12 },
-  { string168, fn_restarti2c, 0x12 },
-  { string169, fn_gc, 0x00 },
-  { string170, fn_room, 0x00 },
-  { string171, fn_saveimage, 0x01 },
-  { string172, fn_loadimage, 0x01 },
-  { string173, fn_cls, 0x00 },
-  { string174, fn_pinmode, 0x22 },
-  { string175, fn_digitalread, 0x11 },
-  { string176, fn_digitalwrite, 0x22 },
-  { string177, fn_analogread, 0x11 },
-  { string178, fn_analogwrite, 0x22 },
-  { string179, fn_delay, 0x11 },
-  { string180, fn_millis, 0x00 },
-  { string181, fn_sleep, 0x11 },
-  { string182, fn_note, 0x03 },
-  { string183, fn_edit, 0x11 },
-  { string184, fn_pprint, 0x12 },
-  { string185, fn_pprintall, 0x01 },
-  { string186, fn_format, 0x2F },
-  { string187, fn_require, 0x11 },
-  { string188, fn_listlibrary, 0x00 },
-  { string189, fn_drawpixel, 0x23 },
-  { string190, fn_drawline, 0x45 },
-  { string191, fn_drawrect, 0x45 },
-  { string192, fn_fillrect, 0x45 },
-  { string193, fn_drawcircle, 0x34 },
-  { string194, fn_fillcircle, 0x34 },
-  { string195, fn_drawroundrect, 0x56 },
-  { string196, fn_fillroundrect, 0x56 },
-  { string197, fn_drawtriangle, 0x67 },
-  { string198, fn_filltriangle, 0x67 },
-  { string199, fn_drawchar, 0x36 },
-  { string200, fn_setcursor, 0x22 },
-  { string201, fn_settextcolor, 0x12 },
-  { string202, fn_settextsize, 0x11 },
-  { string203, fn_settextwrap, 0x11 },
-  { string204, fn_fillscreen, 0x01 },
-  { string205, fn_setrotation, 0x11 },
-  { string206, fn_invertdisplay, 0x11 },
+  { string10, NULL, 0x0F },
+  { string11, NULL, 0x0F },
+  { string12, NULL, 0x00 },
+  { string13, sp_quote, 0x11 },
+  { string14, sp_defun, 0x2F },
+  { string15, sp_defvar, 0x12 },
+  { string16, sp_setq, 0x2F },
+  { string17, sp_loop, 0x0F },
+  { string18, sp_return, 0x0F },
+  { string19, sp_push, 0x22 },
+  { string20, sp_pop, 0x11 },
+  { string21, sp_incf, 0x12 },
+  { string22, sp_decf, 0x12 },
+  { string23, sp_setf, 0x2F },
+  { string24, sp_dolist, 0x1F },
+  { string25, sp_dotimes, 0x1F },
+  { string26, sp_trace, 0x01 },
+  { string27, sp_untrace, 0x01 },
+  { string28, sp_formillis, 0x1F },
+  { string29, sp_withoutputtostring, 0x1F },
+  { string30, sp_withserial, 0x1F },
+  { string31, sp_withi2c, 0x1F },
+  { string32, sp_withspi, 0x1F },
+  { string33, sp_withsdcard, 0x2F },
+  { string34, sp_withgfx, 0x1F },
+  { string35, sp_defcode, 0x0F },
+  { string36, NULL, 0x00 },
+  { string37, tf_progn, 0x0F },
+  { string38, tf_if, 0x23 },
+  { string39, tf_cond, 0x0F },
+  { string40, tf_when, 0x1F },
+  { string41, tf_unless, 0x1F },
+  { string42, tf_case, 0x1F },
+  { string43, tf_and, 0x0F },
+  { string44, tf_or, 0x0F },
+  { string45, NULL, 0x00 },
+  { string46, fn_not, 0x11 },
+  { string47, fn_not, 0x11 },
+  { string48, fn_cons, 0x22 },
+  { string49, fn_atom, 0x11 },
+  { string50, fn_listp, 0x11 },
+  { string51, fn_consp, 0x11 },
+  { string52, fn_symbolp, 0x11 },
+  { string53, fn_arrayp, 0x11 },
+  { string54, fn_boundp, 0x11 },
+  { string55, fn_setfn, 0x2F },
+  { string56, fn_streamp, 0x11 },
+  { string57, fn_eq, 0x22 },
+  { string58, fn_car, 0x11 },
+  { string59, fn_car, 0x11 },
+  { string60, fn_cdr, 0x11 },
+  { string61, fn_cdr, 0x11 },
+  { string62, fn_caar, 0x11 },
+  { string63, fn_cadr, 0x11 },
+  { string64, fn_cadr, 0x11 },
+  { string65, fn_cdar, 0x11 },
+  { string66, fn_cddr, 0x11 },
+  { string67, fn_caaar, 0x11 },
+  { string68, fn_caadr, 0x11 },
+  { string69, fn_cadar, 0x11 },
+  { string70, fn_caddr, 0x11 },
+  { string71, fn_caddr, 0x11 },
+  { string72, fn_cdaar, 0x11 },
+  { string73, fn_cdadr, 0x11 },
+  { string74, fn_cddar, 0x11 },
+  { string75, fn_cdddr, 0x11 },
+  { string76, fn_length, 0x11 },
+  { string77, fn_arraydimensions, 0x11 },
+  { string78, fn_list, 0x0F },
+  { string79, fn_makearray, 0x15 },
+  { string80, fn_reverse, 0x11 },
+  { string81, fn_nth, 0x22 },
+  { string82, fn_aref, 0x2F },
+  { string83, fn_assoc, 0x22 },
+  { string84, fn_member, 0x22 },
+  { string85, fn_apply, 0x2F },
+  { string86, fn_funcall, 0x1F },
+  { string87, fn_append, 0x0F },
+  { string88, fn_mapc, 0x2F },
+  { string89, fn_mapcar, 0x2F },
+  { string90, fn_mapcan, 0x2F },
+  { string91, fn_add, 0x0F },
+  { string92, fn_subtract, 0x1F },
+  { string93, fn_multiply, 0x0F },
+  { string94, fn_divide, 0x1F },
+  { string95, fn_mod, 0x22 },
+  { string96, fn_oneplus, 0x11 },
+  { string97, fn_oneminus, 0x11 },
+  { string98, fn_abs, 0x11 },
+  { string99, fn_random, 0x11 },
+  { string100, fn_maxfn, 0x1F },
+  { string101, fn_minfn, 0x1F },
+  { string102, fn_noteq, 0x1F },
+  { string103, fn_numeq, 0x1F },
+  { string104, fn_less, 0x1F },
+  { string105, fn_lesseq, 0x1F },
+  { string106, fn_greater, 0x1F },
+  { string107, fn_greatereq, 0x1F },
+  { string108, fn_plusp, 0x11 },
+  { string109, fn_minusp, 0x11 },
+  { string110, fn_zerop, 0x11 },
+  { string111, fn_oddp, 0x11 },
+  { string112, fn_evenp, 0x11 },
+  { string113, fn_integerp, 0x11 },
+  { string114, fn_numberp, 0x11 },
+  { string115, fn_floatfn, 0x11 },
+  { string116, fn_floatp, 0x11 },
+  { string117, fn_sin, 0x11 },
+  { string118, fn_cos, 0x11 },
+  { string119, fn_tan, 0x11 },
+  { string120, fn_asin, 0x11 },
+  { string121, fn_acos, 0x11 },
+  { string122, fn_atan, 0x12 },
+  { string123, fn_sinh, 0x11 },
+  { string124, fn_cosh, 0x11 },
+  { string125, fn_tanh, 0x11 },
+  { string126, fn_exp, 0x11 },
+  { string127, fn_sqrt, 0x11 },
+  { string128, fn_log, 0x12 },
+  { string129, fn_expt, 0x22 },
+  { string130, fn_ceiling, 0x12 },
+  { string131, fn_floor, 0x12 },
+  { string132, fn_truncate, 0x12 },
+  { string133, fn_round, 0x12 },
+  { string134, fn_char, 0x22 },
+  { string135, fn_charcode, 0x11 },
+  { string136, fn_codechar, 0x11 },
+  { string137, fn_characterp, 0x11 },
+  { string138, fn_stringp, 0x11 },
+  { string139, fn_stringeq, 0x22 },
+  { string140, fn_stringless, 0x22 },
+  { string141, fn_stringgreater, 0x22 },
+  { string142, fn_sort, 0x22 },
+  { string143, fn_stringfn, 0x11 },
+  { string144, fn_concatenate, 0x1F },
+  { string145, fn_subseq, 0x23 },
+  { string146, fn_readfromstring, 0x11 },
+  { string147, fn_princtostring, 0x11 },
+  { string148, fn_prin1tostring, 0x11 },
+  { string149, fn_logand, 0x0F },
+  { string150, fn_logior, 0x0F },
+  { string151, fn_logxor, 0x0F },
+  { string152, fn_lognot, 0x11 },
+  { string153, fn_ash, 0x22 },
+  { string154, fn_logbitp, 0x22 },
+  { string155, fn_eval, 0x11 },
+  { string156, fn_globals, 0x00 },
+  { string157, fn_locals, 0x00 },
+  { string158, fn_makunbound, 0x11 },
+  { string159, fn_break, 0x00 },
+  { string160, fn_read, 0x01 },
+  { string161, fn_prin1, 0x12 },
+  { string162, fn_print, 0x12 },
+  { string163, fn_princ, 0x12 },
+  { string164, fn_terpri, 0x01 },
+  { string165, fn_readbyte, 0x02 },
+  { string166, fn_readline, 0x01 },
+  { string167, fn_writebyte, 0x12 },
+  { string168, fn_writestring, 0x12 },
+  { string169, fn_writeline, 0x12 },
+  { string170, fn_restarti2c, 0x12 },
+  { string171, fn_gc, 0x00 },
+  { string172, fn_room, 0x00 },
+  { string173, fn_saveimage, 0x01 },
+  { string174, fn_loadimage, 0x01 },
+  { string175, fn_cls, 0x00 },
+  { string176, fn_pinmode, 0x22 },
+  { string177, fn_digitalread, 0x11 },
+  { string178, fn_digitalwrite, 0x22 },
+  { string179, fn_analogread, 0x11 },
+  { string180, fn_analogwrite, 0x22 },
+  { string181, fn_delay, 0x11 },
+  { string182, fn_millis, 0x00 },
+  { string183, fn_sleep, 0x11 },
+  { string184, fn_note, 0x03 },
+  { string185, fn_edit, 0x11 },
+  { string186, fn_pprint, 0x12 },
+  { string187, fn_pprintall, 0x01 },
+  { string188, fn_format, 0x2F },
+  { string189, fn_require, 0x11 },
+  { string190, fn_listlibrary, 0x00 },
+  { string191, fn_drawpixel, 0x23 },
+  { string192, fn_drawline, 0x45 },
+  { string193, fn_drawrect, 0x45 },
+  { string194, fn_fillrect, 0x45 },
+  { string195, fn_drawcircle, 0x34 },
+  { string196, fn_fillcircle, 0x34 },
+  { string197, fn_drawroundrect, 0x56 },
+  { string198, fn_fillroundrect, 0x56 },
+  { string199, fn_drawtriangle, 0x67 },
+  { string200, fn_filltriangle, 0x67 },
+  { string201, fn_drawchar, 0x36 },
+  { string202, fn_setcursor, 0x22 },
+  { string203, fn_settextcolor, 0x12 },
+  { string204, fn_settextsize, 0x11 },
+  { string205, fn_settextwrap, 0x11 },
+  { string206, fn_fillscreen, 0x01 },
+  { string207, fn_setrotation, 0x11 },
+  { string208, fn_invertdisplay, 0x11 },
 };
 
 // Table lookup functions
@@ -4298,7 +4417,7 @@ object *eval (object *form, object *env) {
   if (!tstflag(NOESC)) testescape();
 
   if (form == NULL) return nil;
-    
+
   if (form->type >= NUMBER && form->type <= STRING) return form;
 
   if (symbolp(form)) {
@@ -4319,7 +4438,7 @@ object *eval (object *form, object *env) {
 
   if (function == NULL) error(0, PSTR("illegal function"), nil);
   if (!listp(args)) error(0, PSTR("can't evaluate a dotted pair"), args);
-  
+
   // List starts with a symbol?
   if (symbolp(function)) {
     symbol_t name = function->name;
@@ -4327,7 +4446,7 @@ object *eval (object *form, object *env) {
     if ((name == LET) || (name == LETSTAR)) {
       int TCstart = TC;
       object *assigns = first(args);
-      if (!listp(assigns)) error(name, PSTR("first argument is not a list"), assigns);
+      if (!listp(assigns)) error(name, notalist, assigns);
       object *forms = cdr(args);
       object *newenv = env;
       push(newenv, GCStack);
@@ -4370,7 +4489,7 @@ object *eval (object *form, object *env) {
 
     if (name < SPECIAL_FORMS) error2((uintptr_t)function, PSTR("can't be used as a function"));
   }
-        
+
   // Evaluate the parameters - result in head
   object *fname = car(form);
   int TCstart = TC;
@@ -4387,10 +4506,10 @@ object *eval (object *form, object *env) {
     form = cdr(form);
     nargs++;
   }
-    
+
   function = car(head);
   args = cdr(head);
- 
+
   if (symbolp(function)) {
     symbol_t name = function->name;
     if (name >= ENDFUNCTIONS) error(0, PSTR("not valid here"), fname);
@@ -4401,7 +4520,7 @@ object *eval (object *form, object *env) {
   }
 
   if (consp(function)) {
-    
+
     if (issymbol(car(function), LAMBDA)) {
       form = closure(TCstart, fname->name, NULL, cdr(function), args, &env);
       pop(GCStack);
@@ -4521,7 +4640,7 @@ void pinthex (uint32_t i, pfun_t pfun) {
   #endif
   for (uint32_t d=p; d>0; d=d/16) {
     uint32_t j = i/d;
-    if (j!=0 || lead || d==1) { pfun((j<10) ? j+'0' : j+'W'); lead=1;}  
+    if (j!=0 || lead || d==1) { pfun((j<10) ? j+'0' : j+'W'); lead=1;}
     i = i - j*d;
   }
 }
@@ -4551,7 +4670,7 @@ void pmantissa (float f, pfun_t pfun) {
     int d = (int)(i / mul);
     pfun(d + '0');
     i = i - d * mul;
-    if (i == 0) { 
+    if (i == 0) {
       if (!point) {
         for (int k=j; k<sig; k++) pfun('0');
         pfun('.'); pfun('0');
@@ -4574,9 +4693,9 @@ void pfloat (float f, pfun_t pfun) {
     e = floor(log(f) / 2.302585); // log10 gives wrong result
     f = f / pow(10, e);
   }
-  
+
   pmantissa (f, pfun);
-  
+
   // Exponent
   if (e != 0) {
     pfun('e');
@@ -4592,41 +4711,43 @@ void pfl (pfun_t pfun) {
   if (LastPrint != '\n') pfun('\n');
 }
 
+void plist (object *form, pfun_t pfun) {
+  pfun('(');
+  printobject(car(form), pfun);
+  form = cdr(form);
+  while (form != NULL && listp(form)) {
+    pfun(' ');
+    printobject(car(form), pfun);
+    form = cdr(form);
+  }
+  if (form != NULL) {
+    pfstring(PSTR(" . "), pfun);
+    printobject(form, pfun);
+  }
+  pfun(')');
+}
+
+void pstream (object *form, pfun_t pfun) {
+  pfun('<');
+  pfstring(streamname[(form->integer)>>8], pfun);
+  pfstring(PSTR("-stream "), pfun);
+  pint(form->integer & 0xFF, pfun);
+  pfun('>');
+}
+
 void printobject (object *form, pfun_t pfun) {
   if (form == NULL) pfstring(PSTR("nil"), pfun);
   else if (listp(form) && issymbol(car(form), CLOSURE)) pfstring(PSTR("<closure>"), pfun);
-  else if (listp(form)) {
-    pfun('(');
-    printobject(car(form), pfun);
-    form = cdr(form);
-    while (form != NULL && listp(form)) {
-      pfun(' ');
-      printobject(car(form), pfun);
-      form = cdr(form);
-    }
-    if (form != NULL) {
-      pfstring(PSTR(" . "), pfun);
-      printobject(form, pfun);
-    }
-    pfun(')');
-  } else if (integerp(form)) pint(form->integer, pfun);
+  else if (listp(form)) plist(form, pfun);
+  else if (integerp(form)) pint(form->integer, pfun);
   else if (floatp(form)) pfloat(form->single_float, pfun);
   else if (symbolp(form)) { if (form->name != NOTHING) pstring(symbolname(form->name), pfun); }
   else if (characterp(form)) pcharacter(form->chars, pfun);
   else if (stringp(form)) printstring(form, pfun);
   else if (arrayp(form)) printarray(form, pfun);
   else if (form->type == CODE) pfstring(PSTR("code"), pfun);
-  else if (streamp(form)) {
-    pfun('<');
-    if ((form->integer)>>8 == SPISTREAM) pfstring(PSTR("spi"), pfun);
-    else if ((form->integer)>>8 == I2CSTREAM) pfstring(PSTR("i2c"), pfun);
-    else if ((form->integer)>>8 == SDSTREAM) pfstring(PSTR("sd"), pfun);
-    else pfstring(PSTR("serial"), pfun);
-    pfstring(PSTR("-stream "), pfun);
-    pint(form->integer & 0xFF, pfun);
-    pfun('>');
-  } else
-    error2(0, PSTR("Error in print"));
+  else if (streamp(form)) pstream(form, pfun);
+  else error2(0, PSTR("Error in print"));
 }
 
 void prin1object (object *form, pfun_t pfun) {
@@ -4745,7 +4866,7 @@ void processkey (char c) {
 }
 
 int gserial () {
-  if (LastChar) { 
+  if (LastChar) {
     char temp = LastChar;
     LastChar = 0;
     return temp;
@@ -4786,7 +4907,7 @@ object *nextitem (gfun_t gfun) {
 
   // Parse string
   if (ch == '"') return readstring('"', gfun);
-  
+
   // Parse symbol, character, or number
   int index = 0, base = 10, sign = 1;
   char *buffer = SymbolTop;
@@ -4832,6 +4953,7 @@ object *nextitem (gfun_t gfun) {
       return result;
     }
     else if (ch == '(') { LastChar = ch; return readarray(1, read(gfun)); }
+    else if (ch == '*') return readbitarray(gfun);
     else if (ch >= '1' && ch <= '9' && (gfun() & ~0x20) == 'A') return readarray(ch - '0', read(gfun));
     else error2(0, PSTR("illegal character after #"));
     ch = gfun();
@@ -4842,7 +4964,7 @@ object *nextitem (gfun_t gfun) {
   int exponent = 0, esign = 1;
   buffer[2] = '\0'; buffer[3] = '\0'; buffer[4] = '\0'; buffer[5] = '\0'; // In case symbol is < 5 letters
   float divisor = 10.0;
-  
+
   while(!issp(ch) && ch != ')' && ch != '(' && index < bufmax) {
     buffer[index++] = ch;
     if (base == 10 && ch == '.' && !isexponent) {
@@ -4874,19 +4996,19 @@ object *nextitem (gfun_t gfun) {
   if (ch == ')' || ch == '(') LastChar = ch;
   if (isfloat && valid == 1) return makefloat(fresult * sign * pow(10, exponent * esign));
   else if (valid == 1) {
-    if (base == 10 && result > ((unsigned int)INT_MAX+(1-sign)/2)) 
+    if (base == 10 && result > ((unsigned int)INT_MAX+(1-sign)/2))
       return makefloat((float)result*sign);
     return number(result*sign);
   } else if (base == 0) {
     if (index == 1) return character(buffer[0]);
-    const char* p = ControlCodes; char c = 0;
+    PGM_P p = ControlCodes; char c = 0;
     while (c < 33) {
       if (strcasecmp(buffer, p) == 0) return character(c);
       p = p + strlen(p) + 1; c++;
     }
     error2(0, PSTR("unknown character"));
   }
-  
+
   int x = builtin(buffer);
   if (x == NIL) return nil;
   if (x < ENDFUNCTIONS) return newsymbol(x);
@@ -4924,7 +5046,7 @@ object *read (gfun_t gfun) {
   if (item == (object *)KET) error2(0, PSTR("incomplete list"));
   if (item == (object *)BRA) return readrest(gfun);
   if (item == (object *)DOT) return read(gfun);
-  if (item == (object *)QUO) return cons(symbol(QUOTE), cons(read(gfun), NULL)); 
+  if (item == (object *)QUO) return cons(symbol(QUOTE), cons(read(gfun), NULL));
   return item;
 }
 
@@ -4950,7 +5072,7 @@ void setup () {
   initenv();
   initsleep();
   initgfx();
-  pfstring(PSTR("uLisp 3.2 "), pserial); pln(pserial);
+  pfstring(PSTR("uLisp 3.3 "), pserial); pln(pserial);
 }
 
 // Read/Evaluate/Print loop
@@ -4992,7 +5114,7 @@ void loop () {
   }
   // Come here after error
   delay(100); while (Serial.available()) Serial.read();
-  clrflag(NOESC);
+  clrflag(NOESC); BreakLevel = 0;
   for (int i=0; i<TRACEMAX; i++) TraceDepth[i] = 0;
   #if defined(sdcardsupport)
   SDpfile.close(); SDgfile.close();
