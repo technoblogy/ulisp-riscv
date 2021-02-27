@@ -1,5 +1,5 @@
-/* uLisp RISC-V Version 3.5 - www.ulisp.com
-   David Johnson-Davies - www.technoblogy.com - 16th February 2021
+/* uLisp RISC-V Version 3.5a - www.ulisp.com
+   David Johnson-Davies - www.technoblogy.com - 27th February 2021
 
    Licensed under the MIT license: https://opensource.org/licenses/MIT
 */
@@ -2044,7 +2044,7 @@ object *sp_defcode (object *args, object *env) {
   object *globals = GlobalEnv;
   while (globals != NULL) {
     object *pair = car(globals);
-    if (pair != NULL && car(pair) != var) { // Exclude me if I already exist
+    if (pair != NULL && car(pair) != var && consp(cdr(pair))) { // Exclude me if I already exist
       object *codeid = second(pair);
       if (codeid->type == CODE) {
         codesize = codesize + endblock(codeid) - startblock(codeid);
@@ -2064,7 +2064,7 @@ object *sp_defcode (object *args, object *env) {
     globals = GlobalEnv;
     while (globals != NULL) {
       object *pair = car(globals);
-      if (pair != NULL && car(pair) != var) { // Exclude me if I already exist
+      if (pair != NULL && car(pair) != var && consp(cdr(pair))) { // Exclude me if I already exist
         object *codeid = second(pair);
         if (codeid->type == CODE) {
           if (startblock(codeid) < smallest && startblock(codeid) >= origin) {
