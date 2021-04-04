@@ -1,5 +1,5 @@
-/* uLisp RISC-V Version 3.5a - www.ulisp.com
-   David Johnson-Davies - www.technoblogy.com - 27th February 2021
+/* uLisp RISC-V Version 3.6 - www.ulisp.com
+   David Johnson-Davies - www.technoblogy.com - 4th April 2021
 
    Licensed under the MIT license: https://opensource.org/licenses/MIT
 */
@@ -208,7 +208,7 @@ char LastChar = 0;
 char LastPrint = 0;
 
 // Flags
-enum flag { PRINTREADABLY, RETURNFLAG, ESCAPE, EXITEDITOR, LIBRARYLOADED, NOESC };
+enum flag { PRINTREADABLY, RETURNFLAG, ESCAPE, EXITEDITOR, LIBRARYLOADED, NOESC, NOECHO };
 volatile uint8_t Flags = 0b00001; // PRINTREADABLY set by default
 
 // Forward references
@@ -3481,7 +3481,7 @@ object *fn_pinmode (object *args, object *env) {
   int pin = checkinteger(PINMODE, first(args));
   PinMode pm = INPUT;
   object *arg = second(args);
-  if (keywordp(arg)) pm = checkkeyword(PINMODE, arg);
+  if (keywordp(arg)) pm = (PinMode)checkkeyword(PINMODE, arg);
   else if (integerp(arg)) {
     int mode = arg->integer;
     if (mode == 1) pm = OUTPUT; else if (mode == 2) pm = INPUT_PULLUP;
@@ -4514,7 +4514,9 @@ object *eval (object *form, object *env) {
     error(0, PSTR("undefined"), form);
   }
 
+  #if defined(CODESIZE)
   if (form->type == CODE) error2(0, PSTR("can't evaluate CODE header"));
+  #endif
 
   // It's a list
   object *function = car(form);
@@ -4967,9 +4969,10 @@ int gserial () {
   WritePtr = 0;
   return '\n';
 #else
-  while (!Serial.available());
+  unsigned long start = millis();
+  while (!Serial.available()) if (millis() - start > 1000) clrflag(NOECHO);
   char temp = Serial.read();
-  if (temp != '\n') pserial(temp);
+  if (temp != '\n' && !tstflag(NOECHO)) pserial(temp);
   return temp;
 #endif
 }
@@ -4979,8 +4982,8 @@ object *nextitem (gfun_t gfun) {
   while(issp(ch)) ch = gfun();
 
   if (ch == ';') {
-    while(ch != '(') ch = gfun();
-    ch = '(';
+    do { ch = gfun(); if (ch == ';' || ch == '(') setflag(NOECHO); }
+    while(ch != '(');
   }
   if (ch == '\n') ch = gfun();
   if (ch == -1) return nil;
@@ -5156,7 +5159,7 @@ void setup () {
   initenv();
   initsleep();
   initgfx();
-  pfstring(PSTR("uLisp 3.5 "), pserial); pln(pserial);
+  pfstring(PSTR("uLisp 3.6 "), pserial); pln(pserial);
 }
 
 // Read/Evaluate/Print loop
